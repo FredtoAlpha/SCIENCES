@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Le Grand Défi Brevet — Sciences</title>
+<style>
+/* ============ DESIGN TOKENS ============
+   Sujet : tournoi de révision DNB projeté en classe (3e). Registre "officiel"
+   français (typo type signalétique DIN/Bahnschrift) posé sur un plateau de jeu
+   sombre, panneaux "papier" pour le contenu, couleurs d'équipes franches.
+   Polices système uniquement (aucun chargement réseau — PC du collège). */
+:root{
+  --stage:#0f1530; --stage-2:#18204a; --stage-edge:#070b1d;
+  --panel:#f7f1e3; --panel-2:#efe7d2; --ink:#1b2030; --ink-soft:#5a5a4f;
+  --line:#d8cfb4; --line-strong:#1b2030;
+  --gold:#ecb73c; --gold-deep:#b9851f;
+  --t1:#d6453a; --t2:#2f74c0; --t3:#34935f; --t4:#e2a317;
+  --good:#34935f; --good-bg:#e2f0e6; --bad:#d6453a; --bad-bg:#f6e1dd;
+  --shadow:0 14px 40px rgba(0,0,0,.35);
+  --r:18px; --r-sm:11px;
+  --disp:"Bahnschrift","DIN Alternate","Segoe UI Semibold","Segoe UI",system-ui,sans-serif;
+  --body:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Consolas","SFMono-Regular","Roboto Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  font-family:var(--body); color:var(--ink);
+  background:
+    radial-gradient(1200px 700px at 50% -10%, var(--stage-2), transparent 60%),
+    linear-gradient(180deg, var(--stage), var(--stage-edge));
+  background-attachment:fixed;
+  min-height:100%; overflow-x:hidden;
+}
+#app{max-width:1180px;margin:0 auto;padding:16px 18px 40px;min-height:100vh;display:flex;flex-direction:column}
+button{font-family:inherit;cursor:pointer}
+.hidden{display:none !important}
+
+/* ---------- generic stage card ---------- */
+.card{
+  background:var(--panel); color:var(--ink);
+  border-radius:var(--r); box-shadow:var(--shadow);
+  border:1px solid rgba(0,0,0,.06);
+  padding:26px 30px; position:relative;
+}
+.card.paper{
+  background-image:
+    linear-gradient(var(--panel),var(--panel)),
+    repeating-linear-gradient(transparent,transparent 33px,#c9d6e6 33px,#c9d6e6 34px);
+  background-blend-mode:normal;
+}
+.eyebrow{font-family:var(--disp);letter-spacing:.18em;text-transform:uppercase;font-size:.74rem;color:var(--gold-deep);font-weight:700}
+h1,h2,h3{font-family:var(--disp);line-height:1.05;margin:0}
+.headline{font-size:clamp(1.7rem,4.6vw,3rem);font-weight:700;letter-spacing:.01em}
+.headline .pop{color:var(--t1)}
+.sub{color:var(--ink-soft);font-size:1rem;margin-top:10px;max-width:60ch}
+
+/* ---------- buttons ---------- */
+.btn{
+  font-family:var(--disp);font-weight:700;letter-spacing:.03em;font-size:1.05rem;
+  border:none;border-radius:var(--r-sm);padding:14px 22px;color:#fff;
+  background:var(--ink);box-shadow:0 5px 0 #0a0d18;transition:transform .06s, box-shadow .06s, filter .15s;
+}
+.btn:hover{filter:brightness(1.07)}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 #0a0d18}
+.btn.primary{background:linear-gradient(180deg,var(--gold),var(--gold-deep));color:#241a04;box-shadow:0 5px 0 #7c5a13}
+.btn.primary:active{box-shadow:0 1px 0 #7c5a13}
+.btn.ghost{background:transparent;color:var(--panel);border:2px solid rgba(247,241,227,.45);box-shadow:none}
+.btn.ghost:active{transform:translateY(2px)}
+.btn.small{font-size:.85rem;padding:9px 14px;box-shadow:0 4px 0 #0a0d18}
+.btn.small:active{box-shadow:0 1px 0 #0a0d18}
+.btn[disabled]{opacity:.4;pointer-events:none}
+
+/* ---------- HUD (top bar pendant le jeu) ---------- */
+#hud{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+.round-badge{font-family:var(--disp);font-weight:700;color:var(--panel);display:flex;align-items:baseline;gap:10px}
+.round-badge .num{background:var(--gold);color:#241a04;border-radius:9px;padding:4px 10px;font-size:.95rem;letter-spacing:.06em}
+.round-badge .nm{font-size:1.15rem;letter-spacing:.02em}
+.hud-spacer{flex:1}
+.timer{font-family:var(--mono);font-weight:700;font-size:1.5rem;color:var(--panel);min-width:64px;text-align:center;
+  background:rgba(0,0,0,.28);border-radius:10px;padding:4px 12px;border:1px solid rgba(255,255,255,.12)}
+.timer.warn{color:#ffd27a}
+.timer.crit{color:#ff8a7a;animation:pulse .6s infinite alternate}
+@keyframes pulse{to{transform:scale(1.08)}}
+.timer-bar{height:7px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden;width:100%;margin-bottom:14px}
+.timer-bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--t1));width:100%;transition:width .25s linear}
+
+/* ---------- scoreboard ---------- */
+.board{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.team-chip{flex:1 1 0;min-width:120px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  border-radius:13px;padding:10px 12px;color:var(--panel);position:relative;overflow:hidden;transition:transform .15s, box-shadow .15s}
+.team-chip .bar{position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--c)}
+.team-chip .nm{font-family:var(--disp);font-weight:700;letter-spacing:.02em;font-size:1rem;padding-left:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team-chip .sc{font-family:var(--disp);font-weight:700;font-size:1.7rem;padding-left:6px;line-height:1}
+.team-chip.active{box-shadow:0 0 0 2px var(--c), 0 10px 24px rgba(0,0,0,.35);transform:translateY(-3px);background:rgba(255,255,255,.12)}
+.team-chip.active::after{content:"À TOI";position:absolute;right:8px;top:8px;font-family:var(--disp);font-size:.6rem;letter-spacing:.12em;background:var(--c);color:#fff;padding:2px 6px;border-radius:6px}
+.turn-banner{font-family:var(--disp);font-weight:700;letter-spacing:.02em;color:var(--ink);font-size:1.15rem;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.turn-dot{width:16px;height:16px;border-radius:50%;background:var(--c);display:inline-block;box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 30%, transparent)}
+
+/* ---------- question / choices ---------- */
+.qmeta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tag{font-family:var(--disp);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+  padding:4px 9px;border-radius:7px;background:var(--panel-2);color:var(--ink-soft);border:1px solid var(--line)}
+.tag.mat{color:#fff}
+.tag.mat.H{background:#9a3b30}.tag.mat.G{background:#1f6aa8}.tag.mat.E{background:#5a4a86}
+.qtext{font-family:var(--disp);font-weight:700;font-size:clamp(1.3rem,2.8vw,1.9rem);line-height:1.2;margin:4px 0 20px}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.choices{grid-template-columns:1fr}}
+.choice{
+  text-align:left;background:#fff;color:var(--ink);border:2px solid var(--line);
+  border-radius:13px;padding:15px 16px 15px 52px;font-size:1.05rem;font-family:var(--body);
+  position:relative;box-shadow:0 3px 0 rgba(0,0,0,.06);line-height:1.3;transition:border-color .12s, transform .08s, background .12s}
+.choice:hover{border-color:var(--gold);transform:translateY(-1px)}
+.choice .key{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:8px;
+  background:var(--ink);color:#fff;font-family:var(--disp);font-weight:700;display:flex;align-items:center;justify-content:center;font-size:1rem}
+.choice.good{background:var(--good-bg);border-color:var(--good)}
+.choice.good .key{background:var(--good)}
+.choice.bad{background:var(--bad-bg);border-color:var(--bad);text-decoration:line-through;opacity:.85}
+.choice.bad .key{background:var(--bad)}
+.choice[disabled]{cursor:default}
+.explain{margin-top:16px;border-left:5px solid var(--good);background:#eef5ef;border-radius:0 12px 12px 0;padding:13px 16px;font-size:1rem;line-height:1.45}
+.explain.ko{border-left-color:var(--bad);background:#f8ece9}
+.explain b{font-family:var(--disp);letter-spacing:.02em}
+.feedback-line{font-family:var(--disp);font-weight:700;font-size:1.15rem;margin-bottom:4px}
+.gain{color:var(--good)} .nogain{color:var(--ink-soft)}
+
+/* ---------- launch / setup ---------- */
+.hero-wrap{display:flex;flex-direction:column;gap:18px;justify-content:center;flex:1}
+.kbd{font-family:var(--mono);background:#fff;border:1px solid var(--line);border-bottom-width:3px;border-radius:6px;padding:1px 7px;font-size:.85rem;color:var(--ink)}
+.setup-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;align-items:start}
+@media(max-width:820px){.setup-grid{grid-template-columns:1fr}}
+.team-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.team-row .swatch{width:26px;height:26px;border-radius:8px;background:var(--c);flex:none;box-shadow:inset 0 0 0 2px rgba(255,255,255,.4)}
+.team-row input{flex:1;font-family:var(--disp);font-weight:700;font-size:1.05rem;color:var(--ink);
+  border:2px solid var(--line);border-radius:10px;padding:9px 12px;background:#fff}
+.team-row input:focus{outline:none;border-color:var(--gold)}
+.counter{display:flex;align-items:center;gap:8px}
+.counter button{width:40px;height:40px;border-radius:10px;border:2px solid var(--line);background:#fff;font-family:var(--disp);font-size:1.3rem;font-weight:700;color:var(--ink)}
+.counter .val{font-family:var(--disp);font-weight:700;font-size:1.4rem;min-width:28px;text-align:center}
+.rounds-list{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.round-toggle{display:flex;align-items:center;gap:12px;padding:11px 14px;border:2px solid var(--line);border-radius:12px;background:#fff;text-align:left;color:var(--ink);transition:border-color .12s, background .12s}
+.round-toggle .ic{font-size:1.4rem;flex:none}
+.round-toggle .tt{font-family:var(--disp);font-weight:700;font-size:1.02rem}
+.round-toggle .ds{font-size:.82rem;color:var(--ink-soft)}
+.round-toggle .chk{margin-left:auto;width:26px;height:26px;border-radius:8px;border:2px solid var(--line);flex:none;display:flex;align-items:center;justify-content:center;font-family:var(--disp);color:#fff;font-weight:700}
+.round-toggle.on{border-color:var(--good);background:#f1f8f3}
+.round-toggle.on .chk{background:var(--good);border-color:var(--good)}
+
+/* ---------- maps ---------- */
+.map-prompt{font-family:var(--disp);font-weight:700;font-size:clamp(1.2rem,2.6vw,1.7rem);margin-bottom:12px}
+.map-prompt .what{color:var(--t1)}
+.mapwrap{background:#fbf7ec;border-radius:14px;border:2px solid var(--line-strong);overflow:hidden;position:relative}
+.mapwrap svg{display:block;width:100%;height:auto;touch-action:manipulation}
+.land{fill:var(--panel-2);stroke:#9a9482;stroke-width:.6;stroke-linejoin:round}
+.coast{fill:var(--panel-2);stroke:#3a3328;stroke-width:1.1;stroke-linejoin:round}
+.country{fill:var(--panel-2);stroke:#9a9482;stroke-width:.6;cursor:pointer;transition:fill .1s}
+.country:hover{fill:#fff0c9}
+.country.good{fill:var(--good);stroke:#1f5e3c}
+.country.bad{fill:var(--bad);stroke:#7c241b}
+.country.lock{pointer-events:none}
+.pin{cursor:pointer}
+.pin .dot{fill:#fff;stroke:var(--ink);stroke-width:2;transition:fill .1s, r .1s}
+.pin:hover .dot{fill:#ffe39a;r:13}
+.pin.good .dot{fill:var(--good);stroke:#1f5e3c}
+.pin.bad .dot{fill:var(--bad);stroke:#7c241b}
+.pin.lock{pointer-events:none}
+.pin text{font-family:var(--disp);font-weight:700;font-size:13px;fill:var(--ink);paint-order:stroke;stroke:#fff;stroke-width:3.5px;stroke-linejoin:round;pointer-events:none}
+.map-progress{font-family:var(--disp);color:var(--ink-soft);font-size:.92rem;margin-top:10px;text-align:center}
+
+/* ---------- frise / ordering ---------- */
+.seq-instruction{font-family:var(--disp);font-weight:700;font-size:1.15rem;margin-bottom:14px}
+.seq-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.seq-card{background:#fff;border:2px solid var(--line);border-radius:12px;padding:12px 14px;font-family:var(--body);
+  font-size:1rem;flex:1 1 150px;min-width:140px;text-align:center;position:relative;box-shadow:0 3px 0 rgba(0,0,0,.06);transition:transform .08s, border-color .12s}
+.seq-card:hover{border-color:var(--gold);transform:translateY(-2px)}
+.seq-card[disabled]{opacity:.35;pointer-events:none}
+.seq-card .order-badge{position:absolute;top:-10px;left:-10px;width:26px;height:26px;border-radius:50%;background:var(--ink);color:#fff;font-family:var(--disp);font-weight:700;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.seq-slots{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.seq-slot{flex:1 1 100px;min-width:90px;border:2px dashed var(--line);border-radius:10px;min-height:54px;display:flex;align-items:center;justify-content:center;text-align:center;padding:6px;font-size:.9rem;color:var(--ink-soft);font-family:var(--body)}
+.seq-slot.filled{border-style:solid;background:#fff;color:var(--ink)}
+.seq-slot.right{border-color:var(--good);background:var(--good-bg)}
+.seq-slot.wrong{border-color:var(--bad);background:var(--bad-bg)}
+.seq-slot .yr{font-family:var(--disp);font-weight:700;font-size:.95rem;display:block;margin-top:3px}
+
+/* ---------- match (relier) ---------- */
+.match-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media(max-width:640px){.match-grid{gap:12px}}
+.match-col{display:flex;flex-direction:column;gap:10px}
+.match-item{background:#fff;border:2px solid var(--line);border-radius:11px;padding:12px 14px;font-size:1rem;text-align:left;transition:border-color .1s, background .1s;position:relative}
+.match-item:hover{border-color:var(--gold)}
+.match-item.sel{border-color:var(--gold);background:#fff7e3;box-shadow:0 0 0 2px var(--gold)}
+.match-item.done{border-color:var(--good);background:var(--good-bg);pointer-events:none}
+.match-item.done::after{content:"✓";position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--good);font-weight:700}
+
+/* ---------- DC kit ---------- */
+.dc-sujet{background:var(--panel-2);border-radius:12px;padding:14px 16px;margin-bottom:14px;border:1px solid var(--line)}
+.dc-sujet .verbe{display:inline-block;font-family:var(--disp);font-weight:700;background:var(--t1);color:#fff;border-radius:7px;padding:2px 10px;letter-spacing:.05em;margin-bottom:6px;font-size:.8rem;text-transform:uppercase}
+.dc-sujet .txt{font-family:var(--disp);font-weight:700;font-size:1.2rem;line-height:1.25}
+.idea{display:flex;gap:10px;align-items:center;background:#fff;border:2px solid var(--line);border-radius:11px;padding:11px 14px;margin-bottom:9px}
+.idea .lbl{flex:1;font-size:1rem;line-height:1.3}
+.idea .acts{display:flex;gap:6px;flex:none}
+.idea .acts button{font-family:var(--disp);font-weight:700;font-size:.8rem;border:2px solid var(--line);background:#fff;border-radius:8px;padding:7px 10px;color:var(--ink)}
+.idea.ok{border-color:var(--good);background:var(--good-bg)}
+.idea.no{border-color:var(--bad);background:var(--bad-bg)}
+.idea .verdict{font-family:var(--disp);font-weight:700;font-size:.8rem;padding:4px 8px;border-radius:7px}
+.idea.ok .verdict{color:var(--good)} .idea.no .verdict{color:var(--bad)}
+
+/* ---------- wager (boss) ---------- */
+.wager-box{text-align:center}
+.wager-opts{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:16px 0}
+.wager-chip{font-family:var(--disp);font-weight:700;font-size:1.2rem;border:2px solid var(--line);background:#fff;border-radius:12px;padding:14px 22px;color:var(--ink);min-width:90px}
+.wager-chip:hover{border-color:var(--gold)}
+.wager-chip.allin{background:linear-gradient(180deg,var(--gold),var(--gold-deep));color:#241a04;border-color:var(--gold-deep)}
+.wager-note{color:var(--ink-soft);font-size:.92rem}
+
+/* ---------- podium / bilan ---------- */
+.podium{display:flex;justify-content:center;align-items:flex-end;gap:14px;margin:26px 0 10px;flex-wrap:wrap}
+.pod{display:flex;flex-direction:column;align-items:center;gap:8px}
+.pod .crown{font-size:1.8rem}
+.pod .block{border-radius:14px 14px 0 0;width:130px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;color:#fff;padding:12px 8px;box-shadow:var(--shadow)}
+.pod .block .nm{font-family:var(--disp);font-weight:700;font-size:1.05rem;text-align:center;line-height:1.1}
+.pod .block .sc{font-family:var(--disp);font-weight:700;font-size:2rem;line-height:1}
+.pod .rank{font-family:var(--disp);font-weight:700;color:var(--panel);font-size:.85rem}
+.pod.p1 .block{height:170px;background:linear-gradient(180deg,var(--gold),var(--gold-deep))}
+.pod.p1 .block .nm,.pod.p1 .block .sc{color:#241a04}
+.pod.p2 .block{height:128px;background:#9aa4b8}
+.pod.p3 .block{height:100px;background:#b08457}
+.review{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+@media(max-width:760px){.review{grid-template-columns:1fr}}
+.review .col h3{font-size:1.05rem;margin-bottom:8px;color:var(--ink)}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.bar-row .nm{flex:1 1 40%;font-size:.92rem}
+.bar-row .track{flex:1 1 50%;height:14px;border-radius:99px;background:#e6ddc6;overflow:hidden}
+.bar-row .track > i{display:block;height:100%;border-radius:99px}
+.bar-row .pc{font-family:var(--disp);font-weight:700;font-size:.85rem;min-width:42px;text-align:right}
+.niveau{display:inline-block;font-family:var(--disp);font-weight:700;border-radius:8px;padding:3px 10px;font-size:.85rem;color:#fff}
+
+/* ---------- overlay (help / pause / reveal) ---------- */
+.overlay{position:fixed;inset:0;background:rgba(7,11,29,.72);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+.overlay .sheet{max-width:560px;width:100%}
+.overlay .sheet h2{margin-bottom:12px}
+.shortcuts{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:.95rem;align-items:center}
+
+/* ---------- misc ---------- */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;align-items:center}
+.toolbar .hud-spacer{min-width:10px}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
+.center{text-align:center}
+.mt{margin-top:16px}
+.muted{color:var(--ink-soft)}
+.foot{margin-top:auto;padding-top:18px;text-align:center;color:rgba(247,241,227,.5);font-size:.8rem}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+.mode-card{display:flex;flex-direction:column;gap:6px;text-align:left;align-items:flex-start;cursor:pointer;border:1px solid rgba(0,0,0,.06);transition:transform .12s, box-shadow .12s;width:100%}
+.mode-card:hover{transform:translateY(-4px);box-shadow:0 22px 50px rgba(0,0,0,.42)}
+.mode-go{font-family:var(--disp);font-weight:700;color:var(--gold-deep);margin-top:8px;letter-spacing:.02em}
+.team-chip.solo{flex:1}
+.solo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-top:14px}
+.solo-tile{gap:2px}
+.solo-tile .sub{font-size:.85rem;margin-top:2px}
+.tag.mat.M{background:#7a3f9e}.tag.mat.E{background:#2f74c0}.tag.mat.F{background:#b8602a}.tag.mat.V{background:#2f8f6b}.tag.mat.T{background:#9a7b1f}
+.schema-title{text-align:center;font-family:var(--disp);font-weight:700;color:var(--ink);margin:2px 0 8px;font-size:1.05rem}
+svg.schema{display:block;width:100%;max-width:460px;height:auto;margin:0 auto;background:#fbf7ec;border-radius:10px}
+svg.schema .wire{stroke:#1b2030;stroke-width:4;fill:none}
+svg.schema .glyph{stroke:#1b2030;stroke-width:3;fill:none}
+svg.schema .pin{cursor:pointer}
+svg.schema .pin .dot{fill:#fff;stroke:#1b2030;stroke-width:2.5}
+svg.schema .pin:hover .dot{fill:#fff6df;stroke:var(--gold)}
+svg.schema .pin.good .dot{fill:var(--good);stroke:#1f5e3c}
+svg.schema .pin.bad .dot{fill:var(--bad);stroke:#7c241b}
+svg.schema .pinlab{font-family:var(--disp);font-weight:700;font-size:14px;fill:#1b2030;paint-order:stroke;stroke:#fbf7ec;stroke-width:3px}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.appver{position:fixed;right:12px;bottom:12px;z-index:99999;background:#1b2030;color:#f4e4bf;border:2px solid #c79a3a;border-radius:999px;padding:6px 14px;font:700 13px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.3px;box-shadow:0 4px 14px rgba(0,0,0,.35);opacity:.96}
+</style>
+</head>
+<body>
+<div class="appver" id="appver">v3</div>
+<div id="app"></div>
+<canvas class="confetti hidden" id="confetti"></canvas>
+<script>
+/* ====================================================================
+   LE GRAND DÉFI BREVET — moteur de jeu (vanilla JS, 100% hors-ligne)
+   ==================================================================== */
+"use strict";
+
+/* ============ BANQUE DE CONTENUS — SCIENCES : Physique-Chimie + SVT (DNB 3e) ============ */
+/* mat: M=Matière&chimie E=Énergie&électricité F=Forces&mouvements V=Le vivant T=Terre&environnement */
+const QUIZ = [
+{mat:"M",theme:"Atomes & molécules",comp:"Notion",diff:1,q:"De quoi est constituée une molécule ?",c:["d'organes","de cellules","d'atomes","de planètes"],a:2,e:"Une molécule est un assemblage d'atomes liés entre eux."},
+{mat:"M",theme:"L'atome",comp:"Notion",diff:2,q:"Au centre d'un atome se trouve…",c:["le noyau","une cellule","un électron","une molécule"],a:0,e:"L'atome est formé d'un noyau central, autour duquel se déplacent des électrons."},
+{mat:"M",theme:"Les ions",comp:"Notion",diff:2,q:"Un ion est un atome (ou groupe d'atomes) qui a…",c:["fondu","changé de noyau","disparu","gagné ou perdu des électrons"],a:3,e:"Un ion porte une charge : il a perdu des électrons (ion positif) ou en a gagné (ion négatif)."},
+{mat:"M",theme:"Changements d'état",comp:"Notion",diff:1,q:"Le passage de l'état liquide à l'état gazeux s'appelle…",c:["la vaporisation","la fusion","la condensation","la solidification"],a:0,e:"De liquide à gaz : c'est la vaporisation (ex. l'eau qui bout). L'inverse est la liquéfaction."},
+{mat:"M",theme:"Changements d'état",comp:"Notion",diff:1,q:"À quelle température l'eau pure bout-elle, sous pression normale ?",c:["37 °C","0 °C","50 °C","100 °C"],a:3,e:"Sous la pression atmosphérique normale, l'eau pure bout à 100 °C (et gèle à 0 °C)."},
+{mat:"M",theme:"Combustion",comp:"Notion",diff:2,q:"Lors d'une combustion, le combustible réagit avec…",c:["l'eau","le sable","le dioxygène","le sel"],a:2,e:"Une combustion a besoin d'un combustible et d'un comburant : le dioxygène (O₂) de l'air."},
+{mat:"M",theme:"Conservation de la masse",comp:"Raisonner",diff:2,q:"Au cours d'une transformation chimique, la masse totale…",c:["disparaît","se conserve","diminue","augmente"],a:1,e:"La masse se conserve : les atomes sont réorganisés, ni créés ni détruits (Lavoisier)."},
+{mat:"M",theme:"Mélanges",comp:"Notion",diff:1,q:"L'eau salée est…",c:["un mélange homogène","un mélange hétérogène","un corps pur","un atome"],a:0,e:"Le sel dissous n'est plus visible : l'eau salée est un mélange homogène."},
+{mat:"M",theme:"Acides et bases",comp:"Notion",diff:2,q:"Une solution dont le pH est inférieur à 7 est…",c:["acide","neutre","gazeuse","basique"],a:0,e:"pH < 7 : solution acide ; pH = 7 : neutre ; pH > 7 : basique."},
+{mat:"M",theme:"Masse volumique",comp:"Notion",diff:2,q:"La masse volumique se calcule par…",c:["volume ÷ masse","masse × volume","masse ÷ volume","masse + volume"],a:2,e:"Masse volumique ρ = masse ÷ volume (par exemple en g/cm³ ou kg/m³)."},
+{mat:"E",theme:"Circuit en série",comp:"Notion",diff:1,q:"Dans un circuit en série, si une lampe grille, les autres…",c:["explosent","s'éteignent","ne changent pas","brillent plus fort"],a:1,e:"En série, le courant ne passe plus si un élément est coupé : toutes les lampes s'éteignent."},
+{mat:"E",theme:"Intensité",comp:"Notion",diff:2,q:"L'intensité d'un courant se mesure avec un…",c:["voltmètre","chronomètre","ampèremètre","thermomètre"],a:2,e:"L'intensité (en ampères) se mesure avec un ampèremètre, branché en série."},
+{mat:"E",theme:"Tension",comp:"Notion",diff:2,q:"La tension électrique se mesure en…",c:["volts","ampères","watts","ohms"],a:0,e:"La tension se mesure en volts (V), avec un voltmètre branché en dérivation."},
+{mat:"E",theme:"Loi d'Ohm",comp:"Notion",diff:2,q:"La loi d'Ohm s'écrit…",c:["U = R ÷ I","U = R × I","U = I ÷ R","U = R + I"],a:1,e:"Pour une résistance : U = R × I (tension = résistance × intensité)."},
+{mat:"E",theme:"Conducteurs & isolants",comp:"Notion",diff:1,q:"Lequel de ces matériaux est un bon conducteur électrique ?",c:["le bois","le verre","le plastique","le cuivre"],a:3,e:"Les métaux comme le cuivre conduisent le courant ; plastique, bois et verre sont isolants."},
+{mat:"E",theme:"Puissance",comp:"Notion",diff:2,q:"La puissance électrique se calcule par…",c:["P = R × I","P = U + I","P = U × I","P = U ÷ I"],a:2,e:"La puissance (en watts) : P = U × I (tension × intensité)."},
+{mat:"E",theme:"Énergie",comp:"Notion",diff:2,q:"L'énergie électrique consommée se compte souvent en…",c:["newtons","litres","kilowattheures (kWh)","mètres"],a:2,e:"L'énergie consommée se mesure en kilowattheures (kWh) : E = P × durée."},
+{mat:"E",theme:"Sécurité électrique",comp:"Notion",diff:1,q:"Pour protéger une installation d'une surintensité, on utilise…",c:["une lampe","un ressort","un fusible ou un disjoncteur","un aimant"],a:2,e:"Le fusible (ou le disjoncteur) coupe le circuit en cas de surintensité et évite les surchauffes."},
+{mat:"F",theme:"Vitesse",comp:"Notion",diff:1,q:"La vitesse moyenne se calcule par…",c:["distance × temps","distance ÷ temps","temps ÷ distance","distance + temps"],a:1,e:"Vitesse = distance parcourue ÷ durée du trajet."},
+{mat:"F",theme:"Mouvement",comp:"Notion",diff:1,q:"Un mouvement est dit uniforme lorsque la vitesse…",c:["augmente","diminue","est nulle","reste constante"],a:3,e:"Un mouvement uniforme se fait à vitesse constante."},
+{mat:"F",theme:"Gravitation",comp:"Raisonner",diff:2,q:"Sur la Lune, le poids d'un objet, par rapport à la Terre, est…",c:["plus petit","identique","nul","plus grand"],a:0,e:"La Lune attire moins que la Terre : le poids y est environ 6 fois plus petit (la masse, elle, ne change pas)."},
+{mat:"F",theme:"Forces",comp:"Notion",diff:2,q:"Une force se représente par…",c:["un vecteur (une flèche)","un cercle","un point","un nombre seul"],a:0,e:"Une force se modélise par un vecteur : une flèche (direction, sens, intensité)."},
+{mat:"F",theme:"Poids et masse",comp:"Raisonner",diff:2,q:"La masse s'exprime en kilogrammes ; le poids, lui, s'exprime en…",c:["kilogrammes","watts","newtons","litres"],a:2,e:"La masse (kg) mesure la quantité de matière ; le poids est une force, en newtons (N)."},
+{mat:"F",theme:"Lumière",comp:"Notion",diff:1,q:"Dans un milieu transparent et homogène, la lumière se propage…",c:["en ligne droite","en cercle","en zigzag","pas du tout"],a:0,e:"La lumière se propage en ligne droite dans un milieu transparent et homogène."},
+{mat:"F",theme:"Son",comp:"Notion",diff:2,q:"De quoi le son a-t-il besoin pour se propager ?",c:["du vide","de lumière","de chaleur","d'un milieu matériel (air, eau…)"],a:3,e:"Le son est une vibration de la matière : il a besoin d'un milieu matériel et ne se propage pas dans le vide."},
+{mat:"V",theme:"La cellule",comp:"Notion",diff:1,q:"L'unité de base de tous les êtres vivants est…",c:["la cellule","l'organe","la molécule","l'atome"],a:0,e:"Tous les êtres vivants sont constitués de cellules : c'est l'unité du vivant."},
+{mat:"V",theme:"Génétique",comp:"Notion",diff:2,q:"L'information génétique est portée par…",c:["le sang","l'eau","les muscles","l'ADN"],a:3,e:"L'ADN, contenu dans le noyau des cellules, porte l'information génétique."},
+{mat:"V",theme:"Chromosomes",comp:"Notion",diff:2,q:"Combien de chromosomes possède en général une cellule humaine ?",c:["100","46","23","2"],a:1,e:"Les cellules humaines contiennent 46 chromosomes, soit 23 paires."},
+{mat:"V",theme:"Reproduction",comp:"Notion",diff:2,q:"La cellule-œuf provient de l'union…",c:["de deux cellules de peau","de deux ovules","de deux spermatozoïdes","d'un spermatozoïde et d'un ovule"],a:3,e:"La fécondation est l'union d'un spermatozoïde et d'un ovule : elle forme la cellule-œuf."},
+{mat:"V",theme:"Système nerveux",comp:"Notion",diff:2,q:"L'organe qui reçoit et traite les messages nerveux est…",c:["le foie","le cœur","le cerveau","l'estomac"],a:2,e:"Le cerveau (système nerveux central) reçoit, traite et envoie les messages nerveux."},
+{mat:"V",theme:"Immunité",comp:"Notion",diff:2,q:"Quelles cellules défendent l'organisme contre les microbes ?",c:["les cellules de peau","les neurones","les globules rouges","les globules blancs"],a:3,e:"Les globules blancs (leucocytes) assurent les défenses immunitaires."},
+{mat:"V",theme:"Nutrition",comp:"Notion",diff:2,q:"La digestion transforme les aliments en…",c:["déchets uniquement","nutriments assimilables","cellules","oxygène"],a:1,e:"La digestion réduit les aliments en nutriments, qui passent ensuite dans le sang."},
+{mat:"V",theme:"Respiration",comp:"Notion",diff:1,q:"Lors de la respiration, l'organisme absorbe surtout…",c:["de l'eau","du dioxyde de carbone","de l'azote","du dioxygène"],a:3,e:"On inspire de l'air riche en dioxygène (O₂) et on rejette du dioxyde de carbone (CO₂)."},
+{mat:"V",theme:"Hérédité",comp:"Raisonner",diff:3,q:"Un caractère héréditaire est un caractère…",c:["acquis par l'entraînement","dû au hasard seul","provoqué par la nourriture","transmis par les parents (gènes)"],a:3,e:"Un caractère héréditaire est transmis par les gènes des parents (≠ caractère acquis au cours de la vie)."},
+{mat:"T",theme:"Tectonique des plaques",comp:"Notion",diff:2,q:"Les séismes et les volcans se concentrent surtout…",c:["aux frontières des plaques tectoniques","au milieu des plaques","aux pôles","dans les déserts"],a:0,e:"L'activité sismique et volcanique se concentre aux limites des plaques de la lithosphère."},
+{mat:"T",theme:"Évolution",comp:"Notion",diff:2,q:"Selon la théorie de l'évolution, les espèces actuelles…",c:["sont apparues toutes en même temps","ne changent jamais","dérivent d'espèces antérieures","viennent d'autres planètes"],a:2,e:"Les espèces évoluent au cours du temps et dérivent d'ancêtres communs (sélection naturelle)."},
+{mat:"T",theme:"Écosystème",comp:"Notion",diff:1,q:"Dans une chaîne alimentaire, les végétaux verts sont…",c:["des consommateurs","des décomposeurs","des prédateurs","des producteurs"],a:3,e:"Les végétaux chlorophylliens fabriquent leur matière par photosynthèse : ce sont des producteurs."},
+{mat:"T",theme:"Photosynthèse",comp:"Notion",diff:2,q:"Pour la photosynthèse, les plantes ont besoin de lumière, d'eau et de…",c:["dioxygène","dioxyde de carbone","sable","sel"],a:1,e:"Les plantes absorbent du CO₂ et, grâce à la lumière, produisent de la matière organique et du dioxygène."},
+{mat:"T",theme:"Risques naturels",comp:"Raisonner",diff:2,q:"Un aléa sismique devient un risque majeur surtout là où…",c:["il fait froid","des populations sont exposées","il pleut","il n'y a personne"],a:1,e:"Le risque combine l'aléa (le phénomène) et la vulnérabilité (populations et biens exposés)."},
+{mat:"T",theme:"Ressources & énergies",comp:"Notion",diff:1,q:"Laquelle de ces énergies est renouvelable ?",c:["le pétrole","l'énergie solaire","le charbon","le gaz naturel"],a:1,e:"Le solaire (comme l'éolien ou l'hydraulique) est renouvelable ; pétrole, charbon et gaz sont fossiles."},
+{mat:"M",theme:"L'atome",comp:"Notion",diff:2,q:"De quoi est constitué un atome ?",c:["d'un noyau et d'électrons","de cellules","d'organes","uniquement d'eau"],a:0,e:"Un atome a un noyau (protons + neutrons) autour duquel se déplacent des électrons."},
+{mat:"M",theme:"Les ions",comp:"Notion",diff:2,q:"Un ion est un atome (ou groupe d'atomes) qui…",c:["a changé de couleur","a fondu","est devenu vivant","a gagné ou perdu des électrons"],a:3,e:"En gagnant ou perdant des électrons, l'atome devient un ion (négatif : anion ; positif : cation)."},
+{mat:"M",theme:"Molécules",comp:"Notion",diff:1,q:"Une molécule d'eau a pour formule…",c:["CO₂","O₂","NaCl","H₂O"],a:3,e:"L'eau est H₂O : deux atomes d'hydrogène et un atome d'oxygène."},
+{mat:"M",theme:"Changements d'état",comp:"Notion",diff:2,q:"Le passage de l'état solide à l'état liquide s'appelle…",c:["la vaporisation","la sublimation","la fusion","la solidification"],a:2,e:"Solide → liquide : fusion (la glace qui fond). Liquide → solide : solidification."},
+{mat:"M",theme:"Changements d'état",comp:"Raisonner",diff:2,q:"Pendant la fusion d'un corps pur (ex. la glace), la température…",c:["diminue toujours","augmente toujours","reste constante","double"],a:2,e:"Pour un corps pur, la température reste constante pendant le changement d'état : c'est un palier."},
+{mat:"M",theme:"Mélanges",comp:"Notion",diff:1,q:"Un mélange où l'on distingue les constituants (eau + huile) est…",c:["hétérogène","homogène","gazeux","pur"],a:0,e:"Si on voit les constituants, le mélange est hétérogène ; sinon (eau salée) il est homogène."},
+{mat:"M",theme:"Solutions",comp:"Notion",diff:2,q:"Dans l'eau salée, le sel est…",c:["un gaz","le soluté","un précipité","le solvant"],a:1,e:"Le corps dissous (sel) est le soluté ; le liquide qui dissout (eau) est le solvant."},
+{mat:"M",theme:"Combustion",comp:"Notion",diff:2,q:"Pour qu'une combustion ait lieu, il faut un combustible et…",c:["un comburant (le dioxygène)","de l'eau","de l'électricité","du sel"],a:0,e:"Le triangle du feu : un combustible, un comburant (dioxygène de l'air) et une source de chaleur."},
+{mat:"M",theme:"Masse volumique",comp:"Calculer",diff:3,q:"Un objet a une masse de 200 g et un volume de 100 cm³. Sa masse volumique ?",c:["0,5 g/cm³","2 g/cm³","100 g/cm³","20000 g/cm³"],a:1,e:"Masse volumique = masse ÷ volume = 200 ÷ 100 = 2 g/cm³."},
+{mat:"M",theme:"Transformations",comp:"Raisonner",diff:3,q:"La fonte de la glace est une transformation…",c:["physique (changement d'état)","biologique","nucléaire","chimique"],a:0,e:"L'eau reste de l'eau (H₂O) : transformation physique. Une combustion serait chimique."},
+{mat:"M",theme:"Séparation",comp:"Notion",diff:2,q:"Quelle technique sépare un solide non dissous d'un liquide ?",c:["la fusion","la filtration","la combustion","l'évaporation"],a:1,e:"La filtration retient le solide non dissous et laisse passer le liquide (le filtrat)."},
+{mat:"E",theme:"Loi d'Ohm",comp:"Calculer",diff:2,q:"Un conducteur ohmique a R = 10 Ω et I = 2 A. Quelle est la tension U ? (U = R × I)",c:["20 V","12 V","0,2 V","5 V"],a:0,e:"U = R × I = 10 × 2 = 20 V."},
+{mat:"E",theme:"Puissance",comp:"Calculer",diff:2,q:"Un appareil sous U = 230 V est traversé par I = 2 A. Sa puissance ? (P = U × I)",c:["0,01 W","460 W","232 W","115 W"],a:1,e:"P = U × I = 230 × 2 = 460 W."},
+{mat:"E",theme:"Intensité",comp:"Notion",diff:2,q:"Avec quel appareil mesure-t-on l'intensité d'un courant ?",c:["une balance","un thermomètre","un voltmètre","un ampèremètre"],a:3,e:"L'intensité (en ampères, A) se mesure avec un ampèremètre, branché en série."},
+{mat:"E",theme:"Tension",comp:"Notion",diff:2,q:"Avec quel appareil mesure-t-on une tension ?",c:["un pH-mètre","un voltmètre","un chronomètre","un ampèremètre"],a:1,e:"La tension (en volts, V) se mesure avec un voltmètre, branché en dérivation."},
+{mat:"E",theme:"Circuit en série",comp:"Raisonner",diff:2,q:"Dans un circuit en série avec deux lampes, si une lampe grille…",c:["rien ne change","l'autre s'éteint aussi","le circuit prend feu","l'autre brille plus"],a:1,e:"En série, le courant suit un seul chemin : si une lampe grille, le circuit est ouvert et l'autre s'éteint."},
+{mat:"E",theme:"Énergie",comp:"Notion",diff:2,q:"En quelle unité mesure-t-on une énergie ?",c:["le volt (V)","le joule (J)","le watt (W)","l'ampère (A)"],a:1,e:"L'énergie se mesure en joules (J) ; la puissance en watts (W). La facture d'électricité est en kWh."},
+{mat:"E",theme:"Sécurité électrique",comp:"Notion",diff:2,q:"Que se passe-t-il lors d'un court-circuit ?",c:["l'intensité devient très forte (risque d'incendie)","l'intensité devient très faible","rien","la tension disparaît"],a:0,e:"Un court-circuit fait circuler une intensité très élevée : risque d'incendie. Le fusible ou le disjoncteur protège."},
+{mat:"E",theme:"Énergie",comp:"Notion",diff:2,q:"Une centrale hydroélectrique transforme surtout…",c:["l'énergie de l'eau en mouvement en électricité","la lumière en chaleur","le son en électricité","l'énergie du vent en électricité"],a:0,e:"L'eau en mouvement fait tourner une turbine reliée à un alternateur : énergie mécanique → électrique."},
+{mat:"F",theme:"Poids et masse",comp:"Calculer",diff:3,q:"Sur Terre (g ≈ 10 N/kg), quel est le poids d'un objet de 5 kg ? (P = m × g)",c:["500 N","0,5 N","5 N","50 N"],a:3,e:"P = m × g = 5 × 10 = 50 N. La masse (kg) ne change pas ; le poids (N) dépend de la gravité."},
+{mat:"F",theme:"Poids et masse",comp:"Notion",diff:2,q:"La masse d'un objet…",c:["change selon le lieu (Terre, Lune)","se mesure en newtons","est la même partout","est nulle dans l'espace"],a:2,e:"La masse (kg) est la même partout ; c'est le poids (N) qui varie selon la gravité du lieu."},
+{mat:"F",theme:"Forces",comp:"Notion",diff:2,q:"En quelle unité mesure-t-on une force ?",c:["le kilogramme","le newton (N)","le mètre","le joule"],a:1,e:"Une force se mesure en newtons (N), par exemple avec un dynamomètre."},
+{mat:"F",theme:"Gravitation",comp:"Notion",diff:2,q:"La force de gravitation entre deux corps est d'autant plus grande qu'ils sont…",c:["chauds","colorés","légers et éloignés","massifs et proches"],a:3,e:"La gravitation augmente avec la masse des corps et diminue quand la distance augmente."},
+{mat:"F",theme:"Mouvement",comp:"Notion",diff:2,q:"Un mouvement est dit « uniforme » quand…",c:["la vitesse reste constante","la vitesse change tout le temps","la trajectoire est un cercle","l'objet s'arrête"],a:0,e:"Mouvement uniforme = vitesse constante. Vitesse qui augmente : accéléré ; qui diminue : ralenti."},
+{mat:"F",theme:"Mouvement",comp:"Raisonner",diff:3,q:"Le mouvement d'un objet dépend…",c:["de son prix","de sa couleur","du référentiel choisi","de rien"],a:2,e:"Un passager est immobile par rapport au train mais en mouvement par rapport au sol : tout dépend du référentiel."},
+{mat:"F",theme:"Lumière",comp:"Notion",diff:1,q:"Dans un milieu homogène, la lumière se propage…",c:["pas du tout","en courbe","en ligne droite","en zigzag"],a:2,e:"La lumière se propage en ligne droite dans un milieu homogène (modèle du rayon lumineux)."},
+{mat:"F",theme:"Lumière",comp:"Notion",diff:2,q:"La lumière du Soleil met environ 8 minutes à nous parvenir car…",c:["sa vitesse est grande mais la distance est immense","elle est très lente","la Terre tourne","elle s'arrête"],a:0,e:"La lumière va très vite (300 000 km/s) mais le Soleil est très loin (150 millions de km) : environ 8 minutes."},
+{mat:"F",theme:"Son",comp:"Notion",diff:2,q:"Un son aigu correspond à une fréquence…",c:["élevée","faible","nulle","négative"],a:0,e:"Plus la fréquence (en hertz) est élevée, plus le son est aigu ; une fréquence faible donne un son grave."},
+{mat:"V",theme:"La cellule",comp:"Notion",diff:1,q:"Quelle est la plus petite unité du vivant ?",c:["le tissu","la cellule","l'organe","l'atome"],a:1,e:"La cellule est l'unité de base de tous les êtres vivants."},
+{mat:"V",theme:"La cellule",comp:"Notion",diff:2,q:"Quel élément trouve-t-on dans une cellule végétale mais PAS dans une cellule animale ?",c:["le cytoplasme","le noyau","la membrane","la paroi et les chloroplastes"],a:3,e:"La cellule végétale possède une paroi rigide et des chloroplastes (photosynthèse), absents de la cellule animale."},
+{mat:"V",theme:"Génétique",comp:"Notion",diff:2,q:"Où se trouve l'information génétique dans une cellule ?",c:["dans le cytoplasme seul","dans la membrane","à l'extérieur","dans le noyau (l'ADN, les chromosomes)"],a:3,e:"L'information génétique est portée par l'ADN, regroupé dans les chromosomes du noyau."},
+{mat:"V",theme:"Chromosomes",comp:"Notion",diff:2,q:"Combien de chromosomes possède une cellule humaine (hors cellules reproductrices) ?",c:["2","100","46","23"],a:2,e:"Les cellules humaines ont 46 chromosomes (23 paires). Les gamètes en ont 23."},
+{mat:"V",theme:"Hérédité",comp:"Raisonner",diff:2,q:"Pourquoi un enfant ressemble-t-il à ses deux parents ?",c:["par hasard","il les copie","il reçoit la moitié de ses chromosomes de chaque parent","à cause de l'alimentation"],a:2,e:"À la fécondation, l'enfant reçoit 23 chromosomes du père et 23 de la mère : il hérite des deux."},
+{mat:"V",theme:"Respiration",comp:"Notion",diff:2,q:"Lors de la respiration, les êtres vivants…",c:["ne consomment rien","absorbent du dioxygène et rejettent du dioxyde de carbone","rejettent du dioxygène","produisent de la lumière"],a:1,e:"La respiration consomme du dioxygène (O₂) et rejette du dioxyde de carbone (CO₂) ; elle libère de l'énergie."},
+{mat:"V",theme:"Reproduction",comp:"Notion",diff:2,q:"La reproduction sexuée nécessite…",c:["de la lumière","un seul individu","la rencontre de deux cellules reproductrices (gamètes)","une bouture"],a:2,e:"Elle associe deux gamètes (mâle et femelle) à la fécondation, créant un individu unique."},
+{mat:"V",theme:"Immunité",comp:"Notion",diff:2,q:"Quel est le rôle des globules blancs ?",c:["digérer les aliments","transporter le dioxygène","défendre l'organisme contre les microbes","faire battre le cœur"],a:2,e:"Les globules blancs (leucocytes) défendent l'organisme contre les micro-organismes."},
+{mat:"V",theme:"Système nerveux",comp:"Notion",diff:2,q:"Quel organe est le centre du système nerveux ?",c:["l'estomac","le poumon","le cerveau","le cœur"],a:2,e:"Le cerveau (avec la moelle épinière) commande l'organisme et traite les informations des nerfs."},
+{mat:"V",theme:"Nutrition",comp:"Notion",diff:2,q:"À quoi sert la digestion ?",c:["à éliminer le CO₂","à transformer les aliments en nutriments assimilables","à respirer","à fabriquer du sang"],a:1,e:"La digestion découpe les aliments en nutriments, qui passent dans le sang pour nourrir les cellules."},
+{mat:"V",theme:"Micro-organismes",comp:"Notion",diff:2,q:"Les bactéries et les virus sont des…",c:["minéraux","micro-organismes","cellules végétales","organes"],a:1,e:"Bactéries et virus sont des micro-organismes ; certains sont utiles, d'autres pathogènes."},
+{mat:"T",theme:"Tectonique des plaques",comp:"Notion",diff:2,q:"La surface de la Terre est découpée en…",c:["plaques qui bougent lentement","cellules","un seul bloc fixe","cubes"],a:0,e:"La lithosphère est formée de plaques tectoniques qui se déplacent : à l'origine des séismes et volcans."},
+{mat:"T",theme:"Risques naturels",comp:"Notion",diff:2,q:"Un séisme est provoqué par…",c:["le vent","la Lune","la pluie","une rupture brutale des roches en profondeur"],a:3,e:"Un séisme résulte d'une rupture brutale des roches le long d'une faille, libérant des ondes."},
+{mat:"T",theme:"Photosynthèse",comp:"Notion",diff:2,q:"Lors de la photosynthèse, les plantes vertes produisent…",c:["de la lumière","du dioxyde de carbone","du sel","de la matière organique et du dioxygène"],a:3,e:"Grâce à la lumière, les plantes fabriquent de la matière organique et rejettent du dioxygène (O₂), en consommant du CO₂."},
+{mat:"T",theme:"Écosystème",comp:"Notion",diff:2,q:"Dans une chaîne alimentaire, qui est toujours au départ ?",c:["un carnivore","un prédateur","un producteur (végétal)","un champignon"],a:2,e:"Une chaîne alimentaire commence par un producteur (végétal), mangé ensuite par des consommateurs."},
+{mat:"T",theme:"Écosystème",comp:"Notion",diff:1,q:"Dans « herbe → lapin → renard », le lapin est…",c:["un décomposeur","un producteur","un consommateur (herbivore)","un minéral"],a:2,e:"Le lapin mange l'herbe (producteur) : c'est un consommateur herbivore ; le renard est carnivore."},
+{mat:"T",theme:"Ressources & énergies",comp:"Notion",diff:2,q:"Les énergies fossiles (pétrole, charbon, gaz)…",c:["sont limitées et émettent des gaz à effet de serre","viennent directement du Soleil","sont sans pollution","sont inépuisables"],a:0,e:"Les énergies fossiles sont limitées et leur combustion libère du CO₂, gaz à effet de serre."},
+{mat:"T",theme:"Biodiversité",comp:"Notion",diff:3,q:"La biodiversité désigne…",c:["la météo","le nombre d'humains","la taille des continents","la diversité des espèces vivantes"],a:3,e:"La biodiversité est la variété du vivant (espèces, gènes, milieux). Elle est menacée par les activités humaines."},
+{mat:"T",theme:"Cycle de l'eau",comp:"Notion",diff:2,q:"Dans le cycle de l'eau, l'évaporation transforme l'eau…",c:["solide en liquide","liquide en vapeur","en sel","vapeur en glace"],a:1,e:"Le Soleil évapore l'eau (liquide → vapeur) ; elle se condense en nuages puis retombe en précipitations."}
+];
+
+/* ============ DANS L'ORDRE ============ */
+const FRISE = [
+{titre:"Range ces niveaux du vivant du plus petit au plus grand",kind:"taille",ev:[{t:"la cellule",d:1},{t:"le tissu",d:2},{t:"l'organe",d:3},{t:"l'organisme",d:4}]},
+{titre:"Range ces éléments du plus petit au plus grand",kind:"taille",ev:[{t:"l'atome",d:1},{t:"la molécule",d:2},{t:"la cellule",d:3},{t:"l'organe",d:4}]},
+{titre:"Remets dans l'ordre le trajet des aliments (digestion)",kind:"etape",ev:[{t:"la bouche",d:1},{t:"l'œsophage",d:2},{t:"l'estomac",d:3},{t:"l'intestin grêle",d:4},{t:"le gros intestin",d:5}]},
+{titre:"Remets dans l'ordre la démarche expérimentale",kind:"etape",ev:[{t:"observer un phénomène",d:1},{t:"formuler une hypothèse",d:2},{t:"réaliser une expérience",d:3},{t:"conclure",d:4}]},
+{titre:"Range ces ères de la plus ancienne à la plus récente",kind:"epoque",ev:[{t:"le Précambrien",d:1},{t:"le Primaire (Paléozoïque)",d:2},{t:"le Secondaire (Mésozoïque)",d:3},{t:"le Tertiaire (Cénozoïque)",d:4}]},
+{titre:"Remets cette chaîne alimentaire dans l'ordre (qui mange qui)",kind:"etape",ev:[{t:"l'herbe (producteur)",d:1},{t:"le criquet",d:2},{t:"la grenouille",d:3},{t:"le serpent",d:4}]},
+{titre:"Range les états de l'eau du plus froid au plus chaud",kind:"etat",ev:[{t:"la glace (solide)",d:1},{t:"l'eau liquide",d:2},{t:"la vapeur (gaz)",d:3}]},
+{titre:"Remets dans l'ordre les étapes de la démarche expérimentale",kind:"etape",ev:[{t:"se poser une question",d:1},{t:"formuler une hypothèse",d:2},{t:"réaliser l'expérience",d:3},{t:"conclure",d:4}]},
+{titre:"Range ces niveaux d'organisation du plus petit au plus grand",kind:"taille",ev:[{t:"l'atome",d:1},{t:"la molécule",d:2},{t:"la cellule",d:3},{t:"l'organe",d:4},{t:"l'organisme",d:5}]},
+{titre:"Remets cette chaîne alimentaire dans le bon ordre",kind:"chaine",ev:[{t:"l'herbe",d:1},{t:"la sauterelle",d:2},{t:"la grenouille",d:3},{t:"le serpent",d:4}]}
+];
+
+/* ============ RELIER ============ */
+const MATCH = [
+{titre:"Relie chaque grandeur à son unité",pairs:[["la tension","le volt (V)"],["l'intensité","l'ampère (A)"],["la résistance","l'ohm (Ω)"],["la puissance","le watt (W)"]]},
+{titre:"Relie chaque appareil à ce qu'il mesure",pairs:[["voltmètre","la tension"],["ampèremètre","l'intensité"],["thermomètre","la température"],["balance","la masse"]]},
+{titre:"Relie chaque organe à sa fonction",pairs:[["le cœur","faire circuler le sang"],["les poumons","les échanges gazeux"],["l'estomac","la digestion"],["le cerveau","traiter les messages nerveux"]]},
+{titre:"Relie chaque grandeur à son unité",pairs:[["la tension","le volt (V)"],["l'intensité","l'ampère (A)"],["la puissance","le watt (W)"],["l'énergie","le joule (J)"]]},
+{titre:"Relie chaque changement d'état à sa définition",pairs:[["la fusion","solide → liquide"],["la vaporisation","liquide → gaz"],["la solidification","liquide → solide"],["la condensation","gaz → liquide"]]},
+{titre:"Relie chaque être vivant à son rôle dans la chaîne alimentaire",pairs:[["la plante verte","producteur"],["l'herbivore","consommateur de 1er ordre"],["le carnivore","consommateur de 2e ordre"],["le champignon","décomposeur"]]}
+];
+
+/* ============ VRAI OU FAUX (bon:true = VRAI) ============ */
+const DCKIT = [
+{verbe:"Vrai ou faux",sujet:"À propos de la matière et de la chimie.",idees:[{t:"Une molécule est faite d'atomes",bon:true},{t:"Au cours d'une transformation chimique, la masse se conserve",bon:true},{t:"L'eau pure bout à 100 °C sous pression normale",bon:true},{t:"Le dioxygène est nécessaire à une combustion",bon:true},{t:"Un mélange homogène laisse voir plusieurs constituants",bon:false},{t:"Un ion est un atome neutre",bon:false}]},
+{verbe:"Vrai ou faux",sujet:"À propos de l'électricité.",idees:[{t:"La tension se mesure en volts",bon:true},{t:"L'intensité se mesure avec un ampèremètre",bon:true},{t:"Le cuivre est un bon conducteur",bon:true},{t:"La loi d'Ohm s'écrit U = R × I",bon:true},{t:"Le plastique conduit bien le courant",bon:false},{t:"En série, si une lampe grille, les autres brillent plus fort",bon:false}]},
+{verbe:"Vrai ou faux",sujet:"À propos du vivant.",idees:[{t:"La cellule est l'unité de base des êtres vivants",bon:true},{t:"L'ADN porte l'information génétique",bon:true},{t:"Les cellules humaines ont 46 chromosomes",bon:true},{t:"Les globules blancs défendent l'organisme",bon:true},{t:"On respire en absorbant surtout du dioxyde de carbone",bon:false},{t:"Un caractère acquis est transmis par les gènes",bon:false}]},
+{verbe:"Vrai ou faux",sujet:"À propos des forces et des mouvements.",idees:[{t:"La vitesse se calcule par distance ÷ temps",bon:true},{t:"Une force se représente par un vecteur",bon:true},{t:"Le poids s'exprime en newtons",bon:true},{t:"La lumière se propage en ligne droite",bon:true},{t:"Le son se propage dans le vide",bon:false},{t:"La masse d'un objet change quand il va sur la Lune",bon:false}]},
+{verbe:"Vrai ou faux",sujet:"À propos de la Terre et de l'environnement.",idees:[{t:"Les séismes se concentrent aux frontières des plaques",bon:true},{t:"Les végétaux verts sont des producteurs",bon:true},{t:"L'énergie solaire est renouvelable",bon:true},{t:"La photosynthèse a besoin de lumière",bon:true},{t:"Le pétrole est une énergie renouvelable",bon:false},{t:"Les espèces vivantes ne changent jamais au cours du temps",bon:false}]},
+{verbe:"Vrai ou faux",sujet:"À propos de la matière et de la chimie.",idees:[{t:"Un atome est constitué d'un noyau et d'électrons",bon:true},{t:"L'eau a pour formule H₂O",bon:true},{t:"Lors d'une réaction chimique, la masse se conserve",bon:true},{t:"Un pH inférieur à 7 indique une solution acide",bon:true},{t:"La fusion fait passer un solide à l'état gazeux",bon:false},{t:"Eau + huile forme un mélange homogène",bon:false}]},
+{verbe:"Vrai ou faux",sujet:"À propos de l'électricité.",idees:[{t:"L'intensité se mesure avec un ampèremètre",bon:true},{t:"U = R × I est la loi d'Ohm",bon:true},{t:"Le cuivre est un bon conducteur",bon:true},{t:"En série, si une lampe grille, l'autre s'éteint",bon:true},{t:"Le plastique conduit bien le courant",bon:false},{t:"L'énergie se mesure en ampères",bon:false}]},
+{verbe:"Vrai ou faux",sujet:"À propos des forces et des mouvements.",idees:[{t:"Une force se mesure en newtons",bon:true},{t:"La masse est la même partout, le poids dépend du lieu",bon:true},{t:"Le son ne se propage pas dans le vide",bon:true},{t:"La lumière se propage en ligne droite dans un milieu homogène",bon:true},{t:"Le poids se mesure en kilogrammes",bon:false},{t:"Un son aigu a une fréquence faible",bon:false}]},
+{verbe:"Vrai ou faux",sujet:"À propos du vivant et de la Terre.",idees:[{t:"La cellule est la plus petite unité du vivant",bon:true},{t:"L'information génétique est portée par l'ADN",bon:true},{t:"La photosynthèse produit du dioxygène",bon:true},{t:"Une chaîne alimentaire commence par un producteur",bon:true},{t:"Le pétrole est une énergie renouvelable",bon:false},{t:"Les cellules humaines ont 10 chromosomes",bon:false}]}
+];
+
+/* ============ EXPÉRIENCES & CALCULS (situation + meilleure réponse) ============ */
+const EMC = [
+{sit:"Un conducteur ohmique a une résistance R = 20 Ω, traversé par un courant d'intensité I = 0,5 A.",q:"Quelle est la tension U à ses bornes ? (U = R × I)",c:["40 V","20,5 V","10 V","0,025 V"],a:2,e:"U = R × I = 20 × 0,5 = 10 V.",principe:"Loi d'Ohm"},
+{sit:"Un objet a une masse de 200 g et un volume de 100 cm³.",q:"Quelle est sa masse volumique ? (ρ = masse ÷ volume)",c:["0,5 g/cm³","2 g/cm³","300 g/cm³","20 g/cm³"],a:1,e:"ρ = m ÷ V = 200 ÷ 100 = 2 g/cm³.",principe:"Masse volumique"},
+{sit:"Un appareil fonctionne sous une tension U = 230 V avec une intensité I = 2 A.",q:"Quelle est sa puissance ? (P = U × I)",c:["115 W","232 W","228 W","460 W"],a:3,e:"P = U × I = 230 × 2 = 460 W.",principe:"Puissance électrique"},
+{sit:"Un coureur parcourt 100 m en 20 s.",q:"Quelle est sa vitesse moyenne ? (v = distance ÷ temps)",c:["2000 m/s","120 m/s","0,2 m/s","5 m/s"],a:3,e:"v = d ÷ t = 100 ÷ 20 = 5 m/s.",principe:"Vitesse moyenne"},
+{sit:"Une lampe de puissance 60 W reste allumée pendant 2 heures.",q:"Quelle énergie consomme-t-elle ? (E = P × durée)",c:["30 Wh","120 Wh","62 Wh","3600 Wh"],a:1,e:"E = P × durée = 60 W × 2 h = 120 Wh, soit 0,12 kWh.",principe:"Énergie électrique"},
+{sit:"On plonge un thermomètre dans de l'eau pure qui bout (sous pression normale).",q:"Quelle température doit-il indiquer ?",c:["100 °C","212 °C","0 °C","37 °C"],a:0,e:"L'eau pure bout à 100 °C sous la pression atmosphérique normale.",principe:"Changements d'état"},
+{sit:"Un conducteur ohmique a R = 5 Ω, parcouru par I = 3 A.",q:"Quelle est la tension à ses bornes ? (U = R × I)",c:["8 V","1,67 V","15 V","53 V"],a:2,e:"U = R × I = 5 × 3 = 15 V.",principe:"Loi d'Ohm"},
+{sit:"Une lampe fonctionne sous 230 V et 0,5 A.",q:"Quelle est sa puissance ? (P = U × I)",c:["115 W","230,5 W","460 W","0,5 W"],a:0,e:"P = U × I = 230 × 0,5 = 115 W.",principe:"Puissance électrique"},
+{sit:"Sur la Lune, g ≈ 1,6 N/kg. Un objet a une masse de 10 kg.",q:"Quel est son poids sur la Lune ? (P = m × g)",c:["100 N","10 N","1,6 N","16 N"],a:3,e:"P = m × g = 10 × 1,6 = 16 N. Sa masse reste 10 kg ; son poids est plus faible que sur Terre.",principe:"Poids et masse"},
+{sit:"On chauffe de l'eau pure et on relève sa température pendant l'ébullition.",q:"Que montre l'expérience pour un corps pur qui bout ?",c:["la température monte sans cesse","l'eau gèle","la température reste constante (palier)","la température baisse"],a:2,e:"Pendant un changement d'état d'un corps pur, la température reste constante : on observe un palier.",principe:"Changements d'état"},
+{sit:"On brûle 12 g de carbone qui se combine à 32 g de dioxygène.",q:"Quelle masse de dioxyde de carbone obtient-on ?",c:["20 g","44 g","32 g","384 g"],a:1,e:"La masse se conserve : 12 + 32 = 44 g de dioxyde de carbone.",principe:"Conservation de la masse"},
+{sit:"Un objet a une masse de 270 g et un volume de 100 cm³.",q:"Quelle est sa masse volumique ?",c:["2,7 g/cm³","370 g/cm³","27 g/cm³","0,37 g/cm³"],a:0,e:"Masse volumique = masse ÷ volume = 270 ÷ 100 = 2,7 g/cm³ (c'est l'aluminium).",principe:"Masse volumique"}
+];
+
+/* ====================================================================
+   HELPERS
+   ==================================================================== */
+function $(sel,root){return (root||document).querySelector(sel);}
+function elt(tag,cls,html){var e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e;}
+function app(){return document.getElementById("app");}
+function clear(node){while(node.firstChild)node.removeChild(node.firstChild);}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function pick(a,n){return shuffle(a).slice(0,n);}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+var TEAM_COLORS=["var(--t1)","var(--t2)","var(--t3)","var(--t4)"];
+var TEAM_HEX=["#d6453a","#2f74c0","#34935f","#e2a317"];
+var MAT_LABEL={M:"Matière & chimie",E:"Énergie & électricité",F:"Forces & mouvements",V:"Le vivant",T:"Terre & environnement"};
+var FRNAME={"Germany":"l’Allemagne","Spain":"l’Espagne","Italy":"l’Italie","Belgium":"la Belgique","Switzerland":"la Suisse","United Kingdom":"le Royaume-Uni","United States of America":"les États-Unis","China":"la Chine","India":"l’Inde","Brazil":"le Brésil","Russia":"la Russie","France":"la France"};
+
+/* ---------- Web Audio (synthétisé, aucun fichier) ---------- */
+var AC=null, audioOn=true;
+function initAudio(){ if(AC)return; try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ AC=null; } }
+function beep(freq,start,dur,type,vol){
+  if(!AC||!audioOn)return;
+  try{
+    var o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||"sine"; o.frequency.value=freq;
+    o.connect(g); g.connect(AC.destination);
+    var t=AC.currentTime+(start||0);
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(vol||0.18,t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.start(t); o.stop(t+dur+0.02);
+  }catch(e){}
+}
+function sGood(){ beep(660,0,0.12,"triangle",0.2); beep(990,0.10,0.18,"triangle",0.2); }
+function sBad(){ beep(180,0,0.28,"sawtooth",0.16); }
+function sTick(){ beep(440,0,0.05,"square",0.07); }
+function sWin(){ var n=[523,659,784,1046]; for(var i=0;i<n.length;i++) beep(n[i],i*0.12,0.5,"triangle",0.18); }
+function sWager(){ beep(330,0,0.1,"square",0.14); beep(440,0.08,0.1,"square",0.14); }
+
+/* ---------- Confettis (canvas, hand-codé) ---------- */
+var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function confetti(){
+  if(reduce)return;
+  var cv=document.getElementById("confetti"); cv.classList.remove("hidden");
+  var ctx=cv.getContext("2d"); cv.width=innerWidth; cv.height=innerHeight;
+  var cols=["#ecb73c","#d6453a","#2f74c0","#34935f","#ffffff"]; var P=[];
+  for(var i=0;i<150;i++)P.push({x:Math.random()*cv.width,y:-20-Math.random()*cv.height*0.4,
+    vx:(Math.random()-0.5)*4,vy:2+Math.random()*4,s:5+Math.random()*7,
+    c:cols[Math.floor(Math.random()*cols.length)],r:Math.random()*Math.PI,vr:(Math.random()-0.5)*0.3});
+  var t0=performance.now();
+  function frame(t){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    for(var i=0;i<P.length;i++){var p=P[i];p.x+=p.vx;p.y+=p.vy;p.vy+=0.04;p.r+=p.vr;
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillStyle=p.c;ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*0.6);ctx.restore();}
+    if(t-t0<3200)requestAnimationFrame(frame); else {ctx.clearRect(0,0,cv.width,cv.height);cv.classList.add("hidden");}
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ====================================================================
+   ÉTAT DE JEU
+   ==================================================================== */
+var ROUND_DEFS=[
+  {id:"sprint",ic:"⚡",tt:"Sprint sciences",ds:"Physique-chimie et SVT : notions clés"},
+  {id:"cartes",ic:"🔬",tt:"Le schéma à légender",ds:"Cellule, circuit, atome : clique la bonne partie"},
+  {id:"frise", ic:"📊",tt:"Dans l'ordre",ds:"Niveaux du vivant, digestion, ères, démarche"},
+  {id:"dc",    ic:"✅",tt:"Vrai ou faux",ds:"Juge des affirmations scientifiques"},
+  {id:"emc",   ic:"🧪",tt:"Expériences & calculs",ds:"Loi d'Ohm, vitesse, masse volumique…"},
+  {id:"boss",  ic:"🎯",tt:"Le tapis final",ds:"Mise tes points : double ou rien !"}
+];
+var game=null;
+function newGame(teams,rounds,showExp,solo){
+  game={ teams:[], rounds:rounds, ri:-1, active:0, showExp:showExp, solo:!!solo };
+  for(var i=0;i<teams.length;i++){
+    game.teams.push({name:teams[i],hex:TEAM_HEX[i],col:TEAM_COLORS[i],score:0,
+      ok:0,tot:0,byTheme:{},byComp:{}});
+  }
+}
+function rotate(){ if(game.solo)return; game.active=(game.active+1)%game.teams.length; }
+function activeTeam(){ return game.teams[game.active]; }
+function addScore(team,pts){ team.score+=pts; if(team.score<0)team.score=0; }
+function record(team,item,correct){
+  team.tot++; if(correct)team.ok++;
+  if(item&&item.theme){ var th=team.byTheme[item.theme]||{ok:0,tot:0}; th.tot++; if(correct)th.ok++; team.byTheme[item.theme]=th; }
+  if(item&&item.comp){ var c=team.byComp[item.comp]||{ok:0,tot:0}; c.tot++; if(correct)c.ok++; team.byComp[item.comp]=c; }
+}
+
+/* ---------- Contexte d'interaction clavier ---------- */
+var IC={ selects:[], primary:null };
+function resetIC(){ IC.selects=[]; IC.primary=null; }
+document.addEventListener("keydown",function(e){
+  if(e.key==="?"||(e.key==="/"&&e.shiftKey)){ e.preventDefault(); toggleHelp(); return; }
+  if(e.key==="Escape"){ var o=$(".overlay"); if(o){o.remove();return;} }
+  var ov=$(".overlay"); if(ov)return;
+  if(e.key===" "||e.code==="Space"){ if(IC.primary){ e.preventDefault(); IC.primary(); } return; }
+  if(/^[1-9]$/.test(e.key)){ var idx=parseInt(e.key,10)-1; if(IC.selects[idx]){ e.preventDefault(); IC.selects[idx](); } return; }
+  if(e.key==="t"||e.key==="T"){ if(game&&game.ri>=0){ rotate(); renderHUD(); } return; }
+  if(e.key==="n"||e.key==="N"){ if(game&&game.ri>=0) confirmSkipRound(); return; }
+});
+
+/* ====================================================================
+   ÉCRAN D'ACCUEIL / RÉGLAGES
+   ==================================================================== */
+var setup={ nTeams:3, names:["Équipe 1","Équipe 2","Équipe 3","Équipe 4"], rounds:["sprint","cartes","frise","dc","emc","boss"], showExp:true };
+
+function renderSetup(){
+  resetIC(); var a=app(); clear(a);
+  var wrap=elt("div","hero-wrap");
+
+  var hero=elt("div","card");
+  hero.innerHTML=
+    '<div class="eyebrow">Brevet 2026 · Sciences (Physique-Chimie · SVT)</div>'+
+    '<h1 class="headline">Le Grand Défi <span class="pop">Brevet</span></h1>'+
+    '<p class="sub">Un tournoi de révision à projeter en classe. Les équipes s\'affrontent sur six manches de physique-chimie et de SVT : matière, énergie, forces, le vivant et la Terre. Réponds vite, vise le tapis final.</p>';
+  wrap.appendChild(hero);
+
+  var grid=elt("div","setup-grid");
+
+  /* colonne équipes */
+  var cTeams=elt("div","card");
+  cTeams.innerHTML='<div class="eyebrow">Les équipes</div>';
+  var ctr=elt("div","counter");
+  ctr.style.margin="10px 0 16px";
+  ctr.innerHTML='<button id="tm">−</button><span class="val" id="tv">'+setup.nTeams+'</span><button id="tp">+</button>'+
+    '<span class="muted" style="margin-left:8px">équipes (2 à 4)</span>';
+  cTeams.appendChild(ctr);
+  var rows=elt("div"); rows.id="teamRows"; cTeams.appendChild(rows);
+  grid.appendChild(cTeams);
+
+  /* colonne manches */
+  var cR=elt("div","card");
+  cR.innerHTML='<div class="eyebrow">Le programme de la partie</div>'+
+    '<p class="muted" style="margin:8px 0 4px;font-size:.9rem">Tout est sélectionné pour une heure complète. Désélectionne une manche pour la retirer.</p>';
+  var rl=elt("div","rounds-list"); rl.id="roundsList";
+  cR.appendChild(rl);
+  grid.appendChild(cR);
+
+  wrap.appendChild(grid);
+
+  var bar=elt("div","toolbar");
+  var start=elt("button","btn primary","▶  Lancer le défi");
+  start.style.fontSize="1.25rem"; start.style.padding="16px 30px";
+  start.onclick=function(){ startFromSetup(); };
+  var help=elt("button","btn ghost small","Comment jouer ?");
+  help.onclick=toggleHelp;
+  var back=elt("button","btn ghost small","← Modes"); back.onclick=renderHome;
+  bar.appendChild(back);
+  bar.appendChild(start);
+  var sp=elt("span","hud-spacer"); bar.appendChild(sp);
+  bar.appendChild(help);
+  wrap.appendChild(bar);
+
+  wrap.appendChild(foot());
+  a.appendChild(wrap);
+
+  drawTeamRows(); drawRounds();
+  $("#tm").onclick=function(){ if(setup.nTeams>2){setup.nTeams--; $("#tv").textContent=setup.nTeams; drawTeamRows();} };
+  $("#tp").onclick=function(){ if(setup.nTeams<4){setup.nTeams++; $("#tv").textContent=setup.nTeams; drawTeamRows();} };
+}
+function drawTeamRows(){
+  var rows=$("#teamRows"); clear(rows);
+  for(var i=0;i<setup.nTeams;i++){
+    (function(i){
+      var r=elt("div","team-row");
+      r.innerHTML='<span class="swatch" style="--c:'+TEAM_COLORS[i]+'"></span>';
+      var inp=elt("input"); inp.type="text"; inp.value=setup.names[i]; inp.maxLength=22;
+      inp.oninput=function(){ setup.names[i]=inp.value; };
+      r.appendChild(inp); rows.appendChild(r);
+    })(i);
+  }
+}
+function drawRounds(){
+  var rl=$("#roundsList"); clear(rl);
+  for(var i=0;i<ROUND_DEFS.length;i++){
+    (function(def){
+      var on=setup.rounds.indexOf(def.id)>=0;
+      var b=elt("button","round-toggle"+(on?" on":""));
+      b.innerHTML='<span class="ic">'+def.ic+'</span>'+
+        '<span><span class="tt">'+def.tt+'</span><br><span class="ds">'+def.ds+'</span></span>'+
+        '<span class="chk">'+(on?"✓":"")+'</span>';
+      b.onclick=function(){
+        var idx=setup.rounds.indexOf(def.id);
+        if(idx>=0){ if(setup.rounds.length>1) setup.rounds.splice(idx,1); }
+        else setup.rounds.push(def.id);
+        drawRounds();
+      };
+      rl.appendChild(b);
+    })(ROUND_DEFS[i]);
+  }
+}
+function startFromSetup(){
+  initAudio();
+  var names=setup.names.slice(0,setup.nTeams).map(function(n,i){return (n&&n.trim())?n.trim():("Équipe "+(i+1));});
+  /* remettre les manches dans l'ordre officiel */
+  var ordered=ROUND_DEFS.map(function(d){return d.id;}).filter(function(id){return setup.rounds.indexOf(id)>=0;});
+  newGame(names,ordered,setup.showExp);
+  nextRound();
+}
+
+/* ====================================================================
+   HUD + SCOREBOARD
+   ==================================================================== */
+function roundDef(id){ for(var i=0;i<ROUND_DEFS.length;i++)if(ROUND_DEFS[i].id===id)return ROUND_DEFS[i]; return null; }
+function renderShell(){
+  var a=app(); clear(a);
+  var hud=elt("div"); hud.id="hud"; a.appendChild(hud);
+  var tb=elt("div","timer-bar hidden"); tb.id="timerBar"; tb.innerHTML='<i></i>'; a.appendChild(tb);
+  var board=elt("div","board"); board.id="board"; a.appendChild(board);
+  var content=elt("div"); content.id="content"; a.appendChild(content);
+  a.appendChild(foot());
+  renderHUD();
+}
+function renderHUD(){
+  var hud=$("#hud"); if(!hud)return; clear(hud);
+  var def=roundDef(game.rounds[game.ri])||{tt:"",ic:""};
+  var badge=elt("div","round-badge");
+  if(game.solo){
+    badge.innerHTML=(game.rounds.length>1?'<span class="num">ÉTAPE '+(game.ri+1)+'/'+game.rounds.length+'</span>':'')+
+      '<span class="nm">'+def.ic+' '+def.tt+'</span>';
+  } else {
+    badge.innerHTML='<span class="num">MANCHE '+(game.ri+1)+'/'+game.rounds.length+'</span>'+
+      '<span class="nm">'+def.ic+' '+def.tt+'</span>';
+  }
+  hud.appendChild(badge);
+  hud.appendChild(elt("span","hud-spacer"));
+  var tm=elt("div","timer hidden"); tm.id="timer"; tm.textContent="--"; hud.appendChild(tm);
+  drawBoard();
+}
+function drawBoard(){
+  var b=$("#board"); if(!b)return; clear(b);
+  if(game.solo){
+    var st=game.teams[0];
+    var sc=elt("div","team-chip solo"); sc.style.setProperty("--c",st.col);
+    sc.innerHTML='<span class="bar"></span><div class="nm">👤 '+esc(st.name)+'</div><div class="sc">'+st.score+' pts</div>';
+    b.appendChild(sc); return;
+  }
+  for(var i=0;i<game.teams.length;i++){
+    var t=game.teams[i];
+    var c=elt("div","team-chip"+(i===game.active?" active":""));
+    c.style.setProperty("--c",t.col);
+    c.innerHTML='<span class="bar"></span><div class="nm">'+esc(t.name)+'</div><div class="sc">'+t.score+'</div>';
+    b.appendChild(c);
+  }
+}
+function bumpScore(){ /* petite animation du tableau */ drawBoard(); }
+
+/* ---------- Timer ---------- */
+var timer={ id:null, total:0, left:0, onEnd:null };
+function startTimer(sec,onEnd){
+  stopTimer();
+  var tm=$("#timer"), tb=$("#timerBar");
+  if(tm)tm.classList.remove("hidden"); if(tb)tb.classList.remove("hidden");
+  timer.total=sec; timer.left=sec; timer.onEnd=onEnd;
+  paintTimer();
+  timer.id=setInterval(function(){
+    timer.left--; paintTimer();
+    if(timer.left<=5&&timer.left>0)sTick();
+    if(timer.left<=0){ stopTimer(); if(timer.onEnd)timer.onEnd(); }
+  },1000);
+}
+function paintTimer(){
+  var tm=$("#timer"), tb=$("#timerBar");
+  if(tm){ tm.textContent=timer.left+"s"; tm.className="timer"+(timer.left<=10&&timer.left>5?" warn":"")+(timer.left<=5?" crit":""); }
+  if(tb){ var f=Math.max(0,timer.left/timer.total*100); $("i",tb).style.width=f+"%"; }
+}
+function stopTimer(){ if(timer.id){clearInterval(timer.id);timer.id=null;} var tm=$("#timer"),tb=$("#timerBar"); if(tm)tm.classList.add("hidden"); if(tb)tb.classList.add("hidden"); }
+function timerFrac(){ return timer.total?Math.max(0,timer.left/timer.total):0; }
+
+/* ---------- barre d'outils prof ---------- */
+function toolbar(skipLabel){
+  var bar=elt("div","toolbar");
+  var skip=elt("button","btn ghost small","⏭  "+(skipLabel||"Passer"));
+  skip.onclick=function(){ if(IC.primary)IC.primary(); };
+  var solo=game&&game.solo;
+  var nextR=elt("button","btn ghost small",solo?(game.rounds.length>1?"Étape suivante":"Terminer"):"Manche suivante");
+  nextR.onclick=solo?nextRound:confirmSkipRound;
+  var pause=elt("button","btn ghost small","⏸  Aide / Pause");
+  pause.onclick=toggleHelp;
+  bar.appendChild(skip);
+  bar.appendChild(elt("span","hud-spacer"));
+  bar.appendChild(nextR);
+  bar.appendChild(pause);
+  return bar;
+}
+function turnBanner(){
+  if(game.solo){ var s=elt("span"); s.style.display="none"; return s; }
+  var t=activeTeam();
+  var d=elt("div","turn-banner");
+  d.style.setProperty("--c",t.col);
+  d.innerHTML='<span class="turn-dot"></span> Au tour de <b style="margin-left:4px">'+esc(t.name)+'</b>';
+  return d;
+}
+
+/* ====================================================================
+   ENCHAÎNEMENT DES MANCHES
+   ==================================================================== */
+function nextRound(){
+  stopTimer();
+  game.ri++;
+  if(game.ri>=game.rounds.length){ showBilan(); return; }
+  roundIntro(game.rounds[game.ri]);
+}
+function roundIntro(id){
+  var def=roundDef(id);
+  renderShell();
+  var c=elt("div","card center");
+  var eyebrow=game.solo?(game.rounds.length>1?('Étape '+(game.ri+1)+' sur '+game.rounds.length):'Réviser seul'):('Manche '+(game.ri+1)+' sur '+game.rounds.length);
+  var intro=(game.solo&&SOLO_INTRO[id])?SOLO_INTRO[id]:ROUND_INTRO[id];
+  c.innerHTML='<div class="eyebrow">'+eyebrow+'</div>'+
+    '<div style="font-size:3.4rem;margin:6px 0">'+def.ic+'</div>'+
+    '<h2 class="headline" style="font-size:2.2rem">'+def.tt+'</h2>'+
+    '<p class="sub" style="margin:10px auto 0">'+intro+'</p>';
+  var go=elt("button","btn primary mt",game.solo?"Commencer  ▶":"Commencer la manche  ▶");
+  go.style.fontSize="1.15rem";
+  go.onclick=function(){ RUNNERS[id](); };
+  c.appendChild(go);
+  $("#content").appendChild(c);
+  resetIC(); IC.primary=function(){ go.click(); };
+}
+var ROUND_INTRO={
+  sprint:"Une question, quatre réponses, le chrono tourne. Chaque équipe répond à son tour. Plus c'est rapide, plus ça rapporte. Aucune pénalité : on ose !",
+  cartes:"Un schéma s'affiche : cellule, circuit électrique ou atome. À l'équipe de cliquer sur la bonne partie (le noyau, la pile, la membrane…).",
+  frise:"Des étapes, des niveaux ou des époques sont mélangés. L'équipe les remet dans l'ordre. Un point par bonne place.",
+  dc:"Une affirmation scientifique : vraie ou fausse ? L'équipe juge chaque proposition. On chasse les idées fausses.",
+  emc:"Une expérience ou un petit calcul (loi d'Ohm, vitesse, masse volumique…). L'équipe choisit la bonne réponse, puis on rappelle la méthode.",
+  boss:"Dernière ligne droite. Avant chaque question, l'équipe mise une partie de ses points. Bonne réponse : elle empoche la mise. Mauvaise : elle la perd. Tout peut basculer."
+};
+function confirmSkipRound(){
+  if($(".overlay"))return;
+  var ov=elt("div","overlay");
+  var s=elt("div","card sheet center");
+  s.innerHTML='<h2 class="headline" style="font-size:1.6rem">Passer à la manche suivante ?</h2>'+
+    '<p class="sub" style="margin:10px auto">Les points déjà marqués sont conservés.</p>';
+  var yes=elt("button","btn primary","Oui, manche suivante"); yes.style.margin="0 6px";
+  yes.onclick=function(){ ov.remove(); nextRound(); };
+  var no=elt("button","btn ghost","Continuer"); no.style.margin="0 6px";
+  no.style.color="var(--ink)"; no.style.borderColor="var(--line)";
+  no.onclick=function(){ ov.remove(); };
+  var box=elt("div","mt"); box.appendChild(yes); box.appendChild(no); s.appendChild(box);
+  ov.appendChild(s); document.body.appendChild(ov);
+}
+function toggleHelp(){
+  var ex=$(".overlay"); if(ex){ex.remove();return;}
+  var solo=game&&game.solo;
+  var ov=elt("div","overlay");
+  var s=elt("div","card sheet");
+  if(solo){
+    s.innerHTML='<div class="eyebrow">Réviser seul · aide</div>'+
+      '<h2 class="headline" style="font-size:1.7rem">Comment ça marche</h2>'+
+      '<p class="sub">Tu avances à ton rythme. Lis la question, clique ta réponse : la bonne réponse et l\'explication s\'affichent tout de suite. À la fin, tu vois ton score et les thèmes à revoir.</p>'+
+      '<div class="shortcuts mt">'+
+      '<span class="kbd">Espace</span><span>Voir la réponse, puis continuer</span>'+
+      '<span class="kbd">1</span><span>– <span class="kbd">4</span> &nbsp;Choisir une réponse au clavier</span>'+
+      '<span class="kbd">?</span><span>Afficher / masquer cette aide</span>'+
+      '</div>';
+  } else {
+    s.innerHTML='<div class="eyebrow">Mode projection · raccourcis</div>'+
+      '<h2 class="headline" style="font-size:1.7rem">Comment jouer</h2>'+
+      '<p class="sub">Branche l\'ordinateur au vidéoprojecteur. Une équipe joue à la fois (surlignée dans le tableau des scores). Toute la classe voit la question ; l\'équipe annonce sa réponse, tu cliques dessus, la correction s\'affiche.</p>'+
+      '<div class="shortcuts mt">'+
+      '<span class="kbd">Espace</span><span>Révéler la réponse, puis passer à la suite</span>'+
+      '<span class="kbd">1</span><span>– <span class="kbd">4</span> &nbsp;Choisir une réponse au clavier</span>'+
+      '<span class="kbd">T</span><span>Changer d\'équipe active (à la main)</span>'+
+      '<span class="kbd">N</span><span>Passer à la manche suivante</span>'+
+      '<span class="kbd">?</span><span>Afficher / masquer cette aide</span>'+
+      '</div>';
+  }
+  var close=elt("button","btn primary mt","Fermer"); close.onclick=function(){ov.remove();};
+  var rest=elt("button","btn ghost mt","↺ Revenir à l'accueil");
+  rest.style.marginLeft="8px"; rest.style.color="var(--ink)"; rest.style.borderColor="var(--line)";
+  rest.onclick=function(){ ov.remove(); stopTimer(); renderHome(); };
+  s.appendChild(close); s.appendChild(rest);
+  ov.appendChild(s); document.body.appendChild(ov);
+}
+function foot(){ var f=elt("div","foot","Le Grand Défi Brevet · révision DNB Sciences (PC + SVT) · fonctionne hors-ligne"); return f; }
+
+/* ====================================================================
+   CARTE QCM générique (sprint, EMC, boss)
+   ==================================================================== */
+function renderQCM(cfg){
+  resetIC();
+  var content=$("#content"); clear(content);
+  var card=elt("div","card");
+  card.appendChild(turnBanner());
+
+  if(cfg.tags&&cfg.tags.length){
+    var meta=elt("div","qmeta");
+    for(var i=0;i<cfg.tags.length;i++){ var tg=cfg.tags[i]; meta.appendChild(elt("span","tag "+(tg.cls||""),tg.txt)); }
+    card.appendChild(meta);
+  }
+  if(cfg.context){ var ctx=elt("div","dc-sujet"); ctx.innerHTML='<div class="txt" style="font-size:1.05rem">'+esc(cfg.context)+'</div>'; card.appendChild(ctx); }
+  card.appendChild(elt("div","qtext",esc(cfg.question)));
+
+  var grid=elt("div","choices"); var btns=[];
+  for(var i=0;i<cfg.choices.length;i++){
+    (function(i){
+      var b=elt("button","choice");
+      b.innerHTML='<span class="key">'+(i+1)+'</span>'+esc(cfg.choices[i]);
+      b.onclick=function(){ resolve(i); };
+      grid.appendChild(b); btns.push(b);
+      IC.selects[i]=function(){ if(!resolved)resolve(i); };
+    })(i);
+  }
+  card.appendChild(grid);
+  var fb=elt("div"); fb.id="fb"; card.appendChild(fb);
+  content.appendChild(card);
+  content.appendChild(toolbar("Sauter la question"));
+
+  var resolved=false;
+  if(cfg.timed){ startTimer(cfg.sec,function(){ if(!resolved)resolve(-1); }); }
+
+  IC.primary=function(){ if(!resolved)resolve(-1); };
+
+  function resolve(chosen){
+    if(resolved)return; resolved=true; stopTimer();
+    var correct=(chosen===cfg.answer);
+    var pts=0;
+    if(correct){ pts=cfg.base; if(cfg.speed){ pts+=Math.round(10*timerFrac()); } }
+    if(!correct&&cfg.lossOnWrong){ pts=-cfg.base; }
+    for(var i=0;i<btns.length;i++){ btns[i].setAttribute("disabled","disabled"); }
+    btns[cfg.answer].className="choice good";
+    if(chosen>=0&&!correct)btns[chosen].className="choice bad";
+    if(correct)sGood(); else sBad();
+
+    var fbox=$("#fb"); clear(fbox);
+    var line=elt("div","feedback-line "+(correct?"gain":"nogain"));
+    if(chosen===-1)line.innerHTML="⏱ Temps écoulé — "+(pts<0?(pts+" pts"):"0 pt");
+    else if(correct)line.innerHTML="✅ Bonne réponse  ·  +"+pts+" pts";
+    else line.innerHTML="❌ Raté"+(cfg.lossOnWrong?("  ·  "+pts+" pts"):"  ·  0 pt");
+    fbox.appendChild(line);
+    if(game.showExp&&cfg.exp){ var ex=elt("div","explain"+(correct?"":" ko")); ex.innerHTML=(cfg.principe?('<b>'+esc(cfg.principe)+'.</b> '):'')+esc(cfg.exp); fbox.appendChild(ex); }
+
+    addScore(activeTeam(),pts); bumpScore();
+    record(activeTeam(),cfg.item,correct);
+
+    IC.selects=[];
+    IC.primary=function(){ cfg.onDone(correct,pts); };
+    var cont=elt("button","btn primary mt",cfg.lastOne?"Voir le classement  🏁":"Continuer  ▶");
+    cont.onclick=function(){ cfg.onDone(correct,pts); };
+    fbox.appendChild(cont);
+  }
+}
+
+/* ====================================================================
+   MANCHE 1 — SPRINT REPÈRES
+   ==================================================================== */
+var RUNNERS={};
+RUNNERS.sprint=function(){
+  var qs=pick(QUIZ,Math.min(8,QUIZ.length));
+  var k=0;
+  function step(){
+    if(k>=qs.length){ nextRound(); return; }
+    var q=qs[k];
+    renderQCM({
+      item:q,
+      tags:[{cls:"mat "+q.mat,txt:MAT_LABEL[q.mat]},{txt:q.theme},{txt:q.comp}],
+      question:q.q, choices:q.c, answer:q.a, exp:q.e,
+      timed:!game.solo, sec:25, base:q.diff*10, speed:!game.solo,
+      onDone:function(){ k++; rotate(); renderHUD(); step(); }
+    });
+  }
+  step();
+};
+
+/* ====================================================================
+   MANCHE 5 — EMC SITUATION PRATIQUE
+   ==================================================================== */
+RUNNERS.emc=function(){
+  var qs=pick(EMC,Math.min(4,EMC.length));
+  var k=0;
+  function step(){
+    if(k>=qs.length){ nextRound(); return; }
+    var q=qs[k];
+    renderQCM({
+      item:{theme:q.principe,comp:"Calculer"},
+      tags:[{cls:"mat E",txt:"EXPÉRIENCE"},{txt:q.principe}],
+      context:q.sit, question:q.q, choices:q.c, answer:q.a, exp:q.e, principe:q.principe,
+      timed:!game.solo, sec:30, base:15, speed:false,
+      onDone:function(){ k++; rotate(); renderHUD(); step(); }
+    });
+  }
+  step();
+};
+
+/* ====================================================================
+   MANCHE 6 — LE TAPIS FINAL (mise + question mixte)
+   ==================================================================== */
+RUNNERS.boss=function(){
+  /* questions difficiles, mélangées */
+  var pool=shuffle(QUIZ.filter(function(q){return q.diff>=2;}));
+  if(pool.length<game.teams.length*2) pool=shuffle(QUIZ);
+  var turns=game.teams.length*2; /* 2 tours par équipe */
+  var k=0;
+  function step(){
+    if(k>=turns||k>=pool.length){ nextRound(); return; }
+    askWager(pool[k], k===Math.min(turns,pool.length)-1);
+  }
+  function askWager(q,last){
+    resetIC();
+    var t=activeTeam();
+    var content=$("#content"); clear(content);
+    var card=elt("div","card wager-box");
+    card.appendChild(turnBanner());
+    card.innerHTML+='<div class="eyebrow">Le tapis final</div>'+
+      '<h2 class="headline" style="font-size:1.9rem">'+esc(t.name)+', combien tu mises ?</h2>'+
+      '<p class="wager-note">Score actuel : <b>'+t.score+' pts</b>. Bonne réponse = tu gagnes ta mise. Mauvaise = tu la perds.</p>';
+    var opts=elt("div","wager-opts");
+    var choices=[10,20,40].filter(function(v){return v<=Math.max(10,t.score)||true;});
+    choices.forEach(function(v){
+      var b=elt("button","wager-chip",v+" pts");
+      b.onclick=function(){ play(q,v,last); };
+      opts.appendChild(b);
+    });
+    var allin=elt("button","wager-chip allin","TAPIS  ·  "+Math.max(10,t.score)+" pts");
+    allin.onclick=function(){ play(q,Math.max(10,t.score),last); };
+    opts.appendChild(allin);
+    card.appendChild(opts);
+    content.appendChild(card);
+    content.appendChild(toolbar("Mise 10 par défaut"));
+    sWager();
+    IC.primary=function(){ play(q,10,last); };
+  }
+  function play(q,wager,last){
+    renderQCM({
+      item:q,
+      tags:[{cls:"mat "+q.mat,txt:MAT_LABEL[q.mat]},{txt:"Mise : "+wager+" pts"}],
+      question:q.q, choices:q.c, answer:q.a, exp:q.e,
+      timed:true, sec:30, base:wager, speed:false, lossOnWrong:true, lastOne:last,
+      onDone:function(){ k++; rotate(); renderHUD(); step(); }
+    });
+  }
+  step();
+};
+
+/* ====================================================================
+   MANCHE 3 — FRISE CHRONO (ordre) + RELIER
+   ==================================================================== */
+RUNNERS.frise=function(){
+  var sets=pick(FRISE,Math.min(2,FRISE.length));
+  var matchSet=pick(MATCH,1)[0];
+  var tasks=[];
+  sets.forEach(function(s){ tasks.push({type:"order",set:s}); });
+  tasks.push({type:"match",set:matchSet});
+  var ti=0;
+  function step(){ if(ti>=tasks.length){ nextRound(); return; } var t=tasks[ti]; if(t.type==="order")orderTask(t.set,after); else matchTask(t.set,after); }
+  function after(){ ti++; rotate(); renderHUD(); step(); }
+  step();
+};
+function orderTask(set,done){
+  resetIC(); renderHUD();
+  var content=$("#content"); clear(content);
+  var card=elt("div","card");
+  card.appendChild(turnBanner());
+  card.appendChild(elt("div","seq-instruction","📊 "+esc(set.titre)));
+  var slots=elt("div","seq-slots"); var slotEls=[];
+  for(var i=0;i<set.ev.length;i++){ var sl=elt("div","seq-slot","place "+(i+1)); slots.appendChild(sl); slotEls.push(sl); }
+  card.appendChild(slots);
+  var row=elt("div","seq-row"); var cardEls=[];
+  var order=[]; /* indices placés */
+  var shuffled=shuffle(set.ev.map(function(e,i){return i;}));
+  shuffled.forEach(function(idx){
+    var b=elt("button","seq-card",esc(set.ev[idx].t));
+    b.onclick=function(){ placeCard(idx,b); };
+    row.appendChild(b); cardEls[idx]=b;
+  });
+  card.appendChild(row);
+  var fb=elt("div"); fb.id="fb2"; card.appendChild(fb);
+  var valid=elt("button","btn primary mt","Valider la frise"); valid.setAttribute("disabled","disabled");
+  valid.onclick=check; card.appendChild(valid);
+  content.appendChild(card);
+  content.appendChild(toolbar("Valider"));
+  var answered=false;
+  IC.primary=function(){ if(!answered){ if(order.length===set.ev.length)check(); } };
+
+  function placeCard(idx,btn){
+    if(answered)return;
+    order.push(idx); btn.setAttribute("disabled","disabled");
+    var pos=order.length-1;
+    slotEls[pos].className="seq-slot filled";
+    slotEls[pos].innerHTML='<span class="order-badge" style="position:static;display:inline-flex;margin-right:4px">'+order.length+'</span> '+esc(set.ev[idx].t);
+    slotEls[pos].onclick=function(){ if(answered)return; if(pos===order.length-1){ order.pop(); cardEls[idx].removeAttribute("disabled"); slotEls[pos].className="seq-slot"; slotEls[pos].textContent="place "+(pos+1); slotEls[pos].onclick=null; valid.setAttribute("disabled","disabled"); } };
+    if(order.length===set.ev.length) valid.removeAttribute("disabled");
+  }
+  function check(){
+    if(answered)return; answered=true;
+    var correctOrder=set.ev.map(function(e,i){return i;}).sort(function(a,b){return set.ev[a].d-set.ev[b].d;});
+    var good=0;
+    for(var p=0;p<order.length;p++){
+      var ok=(order[p]===correctOrder[p]);
+      if(ok)good++;
+      slotEls[p].className="seq-slot "+(ok?"right":"wrong");
+      slotEls[p].innerHTML=esc(set.ev[order[p]].t);
+    }
+    valid.setAttribute("disabled","disabled");
+    var pts=good*8;
+    addScore(activeTeam(),pts); bumpScore();
+    record(activeTeam(),{theme:"Ranger / ordonner",comp:"Notion"},good===set.ev.length);
+    if(good===set.ev.length)sGood(); else sBad();
+    var fbx=$("#fb2");
+    fbx.appendChild(elt("div","feedback-line "+(good>0?"gain":"nogain"),(good===set.ev.length?"✅ Frise parfaite":"➜ "+good+" / "+set.ev.length+" bien placés")+"  ·  +"+pts+" pts"));
+    var cont=elt("button","btn primary mt","Continuer  ▶"); cont.onclick=done; fbx.appendChild(cont);
+    resetIC(); IC.primary=done;
+  }
+}
+function matchTask(set,done){
+  resetIC(); renderHUD();
+  var content=$("#content"); clear(content);
+  var card=elt("div","card");
+  card.appendChild(turnBanner());
+  card.appendChild(elt("div","seq-instruction","🔗 "+esc(set.titre)));
+  var grid=elt("div","match-grid");
+  var left=elt("div","match-col"), right=elt("div","match-col");
+  var dates=shuffle(set.pairs.map(function(p){return p[0];}));
+  var events=shuffle(set.pairs.map(function(p){return p[1];}));
+  var sel=null, done2=0;
+  dates.forEach(function(d){ var b=elt("button","match-item",esc(d)); b.dataset.k=d; b.onclick=function(){ selectLeft(b); }; left.appendChild(b); });
+  events.forEach(function(e){ var b=elt("button","match-item",esc(e)); b.dataset.k=e; b.onclick=function(){ selectRight(b); }; right.appendChild(b); });
+  grid.appendChild(left); grid.appendChild(right);
+  card.appendChild(grid);
+  var fb=elt("div"); fb.id="fb3"; card.appendChild(fb);
+  content.appendChild(card);
+  content.appendChild(toolbar("Terminer"));
+  IC.primary=finish;
+  function selectLeft(b){ if(b.classList.contains("done"))return; if(sel)sel.classList.remove("sel"); sel=b; b.classList.add("sel"); }
+  function selectRight(b){
+    if(b.classList.contains("done")||!sel)return;
+    var d=sel.dataset.k, e=b.dataset.k;
+    var ok=false; for(var i=0;i<set.pairs.length;i++){ if(set.pairs[i][0]===d&&set.pairs[i][1]===e){ok=true;break;} }
+    if(ok){ sel.classList.remove("sel"); sel.classList.add("done"); b.classList.add("done"); sGood(); addScore(activeTeam(),8); bumpScore(); done2++; sel=null; if(done2===set.pairs.length)finish(); }
+    else { sBad(); b.classList.add("bad"); var bb=b; setTimeout(function(){bb.classList.remove("bad");},500); sel.classList.remove("sel"); sel=null; }
+  }
+  var finished=false;
+  function finish(){
+    if(finished)return; finished=true;
+    record(activeTeam(),{theme:"Relier (grandeurs, organes)",comp:"Notion"},done2===set.pairs.length);
+    var fbx=$("#fb3");
+    fbx.appendChild(elt("div","feedback-line gain","🔗 "+done2+" / "+set.pairs.length+" reliés  ·  +"+(done2*8)+" pts"));
+    var cont=elt("button","btn primary mt","Continuer  ▶"); cont.onclick=done; fbx.appendChild(cont);
+    resetIC(); IC.primary=done;
+  }
+}
+
+/* ====================================================================
+   MANCHE 4 — DÉVELOPPEMENT CONSTRUIT EN KIT (tri d'idées)
+   ==================================================================== */
+RUNNERS.dc=function(){
+  var sujets=pick(DCKIT,Math.min(2,DCKIT.length));
+  var si=0;
+  function step(){ if(si>=sujets.length){ nextRound(); return; } sujetTask(sujets[si],function(){ si++; rotate(); renderHUD(); step(); }); }
+  step();
+};
+function sujetTask(s,done){
+  resetIC(); renderHUD();
+  var content=$("#content"); clear(content);
+  var card=elt("div","card");
+  card.appendChild(turnBanner());
+  var sj=elt("div","dc-sujet");
+  sj.innerHTML='<span class="verbe">'+esc(s.verbe)+'</span><div class="txt">'+esc(s.sujet)+'</div>';
+  card.appendChild(sj);
+  card.appendChild(elt("p","muted","Pour chaque affirmation, dis si elle est <b>vraie</b> ou <b>fausse</b>."));
+  var list=elt("div"); card.appendChild(list);
+  var ideas=shuffle(s.idees.slice());
+  var answered=0, good=0;
+  ideas.forEach(function(it){
+    var row=elt("div","idea");
+    row.innerHTML='<span class="lbl">'+esc(it.t)+'</span>';
+    var acts=elt("div","acts");
+    var bu=elt("button",null,"Vrai"); var bh=elt("button",null,"Faux");
+    acts.appendChild(bu); acts.appendChild(bh);
+    row.appendChild(acts);
+    function answer(saidUtile){
+      var ok=(saidUtile===it.bon);
+      row.className="idea "+(ok?"ok":"no");
+      acts.innerHTML='<span class="verdict">'+(ok?"✓ "+(it.bon?"vrai":"faux"):"✗ c'était "+(it.bon?"vrai":"faux"))+'</span>';
+      if(ok){good++; addScore(activeTeam(),6); bumpScore(); sGood();} else sBad();
+      answered++; if(answered===ideas.length)finishDC();
+    }
+    bu.onclick=function(){answer(true);}; bh.onclick=function(){answer(false);};
+    list.appendChild(row);
+  });
+  var fb=elt("div"); fb.id="fb4"; card.appendChild(fb);
+  content.appendChild(card);
+  content.appendChild(toolbar("Terminer le tri"));
+  var fin=false;
+  IC.primary=finishDC;
+  function finishDC(){
+    if(fin)return; fin=true;
+    record(activeTeam(),{theme:"Vrai ou faux",comp:"Raisonner"},good===ideas.length);
+    var fbx=$("#fb4");
+    fbx.appendChild(elt("div","feedback-line "+(good>0?"gain":"nogain"),"✅ "+good+" / "+ideas.length+" justes  ·  +"+(good*6)+" pts"));
+    var cont=elt("button","btn primary mt","Continuer  ▶"); cont.onclick=done; fbx.appendChild(cont);
+    resetIC(); IC.primary=done;
+  }
+}
+
+/* ====================================================================
+   MANCHE 2 — LE SCHÉMA À LÉGENDER (clé interne 'cartes')
+   Schémas dessinés en SVG ; on clique sur la bonne partie (pastilles).
+   ==================================================================== */
+var DIAGRAMS = [
+  {
+    title:"Cellule animale",
+    svg:'<svg viewBox="0 0 360 280" xmlns="http://www.w3.org/2000/svg" class="schema">'+
+        '<circle cx="180" cy="140" r="112" fill="#f6e7c8" stroke="#b8602a" stroke-width="7"></circle>'+
+        '<circle cx="205" cy="120" r="38" fill="#d9c2ec" stroke="#7a3f9e" stroke-width="3"></circle>'+
+        '<circle cx="205" cy="120" r="6" fill="#7a3f9e"></circle>'+
+        '<g class="pin" data-zone="membrane"><circle class="dot" cx="180" cy="28" r="9"></circle></g>'+
+        '<g class="pin" data-zone="cytoplasme"><circle class="dot" cx="108" cy="196" r="9"></circle></g>'+
+        '<g class="pin" data-zone="noyau"><circle class="dot" cx="205" cy="120" r="9"></circle></g>'+
+        '</svg>',
+    asks:[{zone:"noyau",label:"le noyau"},{zone:"membrane",label:"la membrane"},{zone:"cytoplasme",label:"le cytoplasme"}]
+  },
+  {
+    title:"Circuit électrique",
+    svg:'<svg viewBox="0 0 360 260" xmlns="http://www.w3.org/2000/svg" class="schema">'+
+        '<path class="wire" d="M70 70 H290 V190 H70 Z"></path>'+
+        '<rect x="64" y="121" width="12" height="16" fill="#fbf7ec"></rect>'+
+        '<line class="glyph" x1="50" y1="121" x2="90" y2="121"></line>'+
+        '<line x1="60" y1="137" x2="80" y2="137" stroke="#1b2030" stroke-width="6"></line>'+
+        '<rect x="164" y="66" width="32" height="8" fill="#fbf7ec"></rect>'+
+        '<circle cx="180" cy="70" r="16" fill="#fff" stroke="#1b2030" stroke-width="3"></circle>'+
+        '<line class="glyph" x1="169" y1="59" x2="191" y2="81"></line>'+
+        '<line class="glyph" x1="191" y1="59" x2="169" y2="81"></line>'+
+        '<rect x="286" y="118" width="8" height="32" fill="#fbf7ec"></rect>'+
+        '<circle cx="290" cy="146" r="4" fill="#1b2030"></circle>'+
+        '<line class="glyph" x1="290" y1="146" x2="307" y2="120"></line>'+
+        '<g class="pin" data-zone="generateur"><circle class="dot" cx="70" cy="128" r="9"></circle></g>'+
+        '<g class="pin" data-zone="lampe"><circle class="dot" cx="180" cy="70" r="9"></circle></g>'+
+        '<g class="pin" data-zone="interrupteur"><circle class="dot" cx="296" cy="132" r="9"></circle></g>'+
+        '<g class="pin" data-zone="fil"><circle class="dot" cx="180" cy="190" r="9"></circle></g>'+
+        '</svg>',
+    asks:[{zone:"generateur",label:"le générateur (la pile)"},{zone:"lampe",label:"la lampe"},{zone:"interrupteur",label:"l'interrupteur"},{zone:"fil",label:"un fil conducteur"}]
+  },
+  {
+    title:"Atome",
+    svg:'<svg viewBox="0 0 360 280" xmlns="http://www.w3.org/2000/svg" class="schema">'+
+        '<ellipse cx="180" cy="140" rx="118" ry="66" fill="none" stroke="#2f74c0" stroke-width="3" stroke-dasharray="6 6"></ellipse>'+
+        '<circle cx="180" cy="140" r="26" fill="#b8602a" stroke="#7c3a16" stroke-width="2"></circle>'+
+        '<g class="pin" data-zone="noyau"><circle class="dot" cx="180" cy="140" r="9"></circle></g>'+
+        '<g class="pin" data-zone="electron"><circle class="dot" cx="298" cy="140" r="9"></circle></g>'+
+        '</svg>',
+    asks:[{zone:"noyau",label:"le noyau"},{zone:"electron",label:"un électron"}]
+  },
+{title:"Cellule végétale",svg:"<svg viewBox=\"0 0 360 280\" xmlns=\"http://www.w3.org/2000/svg\" class=\"schema\"><rect x=\"36\" y=\"40\" width=\"288\" height=\"200\" rx=\"22\" fill=\"#eef6e0\" stroke=\"#5a7d2a\" stroke-width=\"9\"></rect><rect x=\"48\" y=\"52\" width=\"264\" height=\"176\" rx=\"16\" fill=\"#f6e7c8\" stroke=\"#b8602a\" stroke-width=\"3\"></rect><ellipse cx=\"214\" cy=\"162\" rx=\"74\" ry=\"56\" fill=\"#cfe3f2\" stroke=\"#3f78a0\" stroke-width=\"3\"></ellipse><circle cx=\"102\" cy=\"106\" r=\"30\" fill=\"#d9c2ec\" stroke=\"#7a3f9e\" stroke-width=\"3\"></circle><circle cx=\"102\" cy=\"106\" r=\"6\" fill=\"#7a3f9e\"></circle><ellipse cx=\"250\" cy=\"84\" rx=\"20\" ry=\"11\" fill=\"#8bc34a\" stroke=\"#4e7a1e\" stroke-width=\"2\"></ellipse><ellipse cx=\"120\" cy=\"198\" rx=\"20\" ry=\"11\" fill=\"#8bc34a\" stroke=\"#4e7a1e\" stroke-width=\"2\"></ellipse><ellipse cx=\"292\" cy=\"148\" rx=\"17\" ry=\"10\" fill=\"#8bc34a\" stroke=\"#4e7a1e\" stroke-width=\"2\"></ellipse><g class=\"pin\" data-zone=\"paroi\"><circle class=\"dot\" cx=\"180\" cy=\"44\" r=\"9\"></circle></g><g class=\"pin\" data-zone=\"noyau\"><circle class=\"dot\" cx=\"102\" cy=\"106\" r=\"9\"></circle></g><g class=\"pin\" data-zone=\"vacuole\"><circle class=\"dot\" cx=\"214\" cy=\"172\" r=\"9\"></circle></g><g class=\"pin\" data-zone=\"chloroplaste\"><circle class=\"dot\" cx=\"250\" cy=\"84\" r=\"9\"></circle></g></svg>",asks:[{zone:"paroi",label:"la paroi"},{zone:"noyau",label:"le noyau"},{zone:"vacuole",label:"la vacuole"},{zone:"chloroplaste",label:"un chloroplaste"}]}
+];
+function zoneName(z){ var m={noyau:"noyau",membrane:"membrane",cytoplasme:"cytoplasme",generateur:"générateur",lampe:"lampe",interrupteur:"interrupteur",fil:"fil",electron:"électron"}; return m[z]||z; }
+RUNNERS.cartes=function(){
+  var chosen=shuffle(DIAGRAMS.slice()).slice(0,2);
+  var prompts=[];
+  chosen.forEach(function(d){ shuffle(d.asks.slice()).slice(0,3).forEach(function(a){ prompts.push({d:d,zone:a.zone,label:a.label}); }); });
+  prompts=prompts.slice(0,5);
+  renderHUD();
+  var content=$("#content"); clear(content);
+  var card=elt("div","card");
+  var tb=elt("div","turn-banner"); card.appendChild(tb);
+  var sub=elt("div","eyebrow"); sub.style.marginBottom="4px"; sub.textContent="Schéma à légender"; card.appendChild(sub);
+  var promptEl=elt("div","map-prompt"); card.appendChild(promptEl);
+  var titleEl=elt("div","schema-title"); card.appendChild(titleEl);
+  var wrap=elt("div","mapwrap"); card.appendChild(wrap);
+  var prog=elt("div","map-progress"); card.appendChild(prog);
+  var fb=elt("div"); fb.id="fbm"; card.appendChild(fb);
+  content.appendChild(card);
+  content.appendChild(toolbar("Passer ce schéma"));
+  var pi=0, answered=false;
+  function setTurn(){ if(game.solo){ tb.style.display="none"; return; } tb.style.setProperty("--c",activeTeam().col); tb.innerHTML='<span class="turn-dot"></span> Au tour de <b style="margin-left:4px">'+esc(activeTeam().name)+'</b>'; }
+  function label(svg,zone,cls){
+    var pin=svg.querySelector('.pin[data-zone="'+zone+'"]'); if(!pin)return;
+    pin.setAttribute("class","pin "+cls);
+    var dot=pin.querySelector(".dot"); var cx=+dot.getAttribute("cx"), cy=+dot.getAttribute("cy");
+    var ns="http://www.w3.org/2000/svg"; var t=document.createElementNS(ns,"text");
+    t.setAttribute("x",cx); t.setAttribute("y",cy-14); t.setAttribute("text-anchor","middle"); t.setAttribute("class","pinlab");
+    t.textContent=zoneName(zone); svg.appendChild(t);
+  }
+  function lock(svg){ var p=svg.querySelectorAll(".pin"); for(var i=0;i<p.length;i++) p[i].onclick=null; }
+  function ask(){
+    if(pi>=prompts.length){ nextRound(); return; }
+    resetIC(); answered=false; clear($("#fbm")); setTurn();
+    var pr=prompts[pi];
+    titleEl.textContent=pr.d.title;
+    prog.textContent="Schéma "+(pi+1)+" / "+prompts.length;
+    promptEl.innerHTML='Clique sur <span class="what">'+esc(pr.label)+'</span>';
+    wrap.innerHTML=pr.d.svg;
+    var svg=$("svg",wrap);
+    var pins=svg.querySelectorAll(".pin");
+    for(var i=0;i<pins.length;i++){ (function(pin){ pin.onclick=function(){ if(answered)return; pick(pin.getAttribute("data-zone"),pin,svg,pr); }; })(pins[i]); }
+    IC.primary=function(){ if(!answered) skip(svg,pr); };
+  }
+  function pick(zone,pin,svg,pr){
+    answered=true; lock(svg);
+    var ok=(zone===pr.zone);
+    if(ok){ label(svg,pr.zone,"good"); finish(true,""); }
+    else { pin.setAttribute("class","pin bad"); label(svg,pr.zone,"good"); finish(false,"il fallait cliquer sur "+pr.label); }
+  }
+  function skip(svg,pr){ answered=true; lock(svg); label(svg,pr.zone,"good"); finish(false,"il fallait cliquer sur "+pr.label); }
+  function finish(correct,msg){
+    addScore(activeTeam(),correct?12:0); bumpScore();
+    record(activeTeam(),{theme:"Schéma à légender",comp:"Légender"},correct);
+    if(correct)sGood(); else sBad();
+    var fbx=$("#fbm");
+    var line=elt("div","feedback-line "+(correct?"gain":"nogain"));
+    line.innerHTML=correct?"✅ Exact  ·  +12 pts":"❌ Raté — "+esc(msg);
+    fbx.appendChild(line);
+    var cont=elt("button","btn primary mt","Continuer  ▶"); cont.onclick=function(){ pi++; rotate(); renderHUD(); ask(); }; fbx.appendChild(cont);
+    resetIC(); IC.primary=cont.onclick;
+  }
+  ask();
+};
+
+/* ====================================================================
+   BILAN FINAL
+   ==================================================================== */
+function niveau(p){
+  if(p>=85)return{l:"Expert",c:"#34935f"};
+  if(p>=70)return{l:"Solide",c:"#2f74c0"};
+  if(p>=50)return{l:"Correct",c:"#e2a317"};
+  return{l:"Fragile",c:"#d6453a"};
+}
+function barColor(p){ return p>=70?"#34935f":(p>=50?"#e2a317":"#d6453a"); }
+function showBilan(){
+  if(game.solo){ renderSoloBilan(); return; }
+  stopTimer(); resetIC();
+  var a=app(); clear(a);
+  var ranked=game.teams.slice().sort(function(x,y){return y.score-x.score;});
+
+  var head=elt("div","card center");
+  head.innerHTML='<div class="eyebrow">Fin du défi</div><h1 class="headline">Classement final</h1>';
+  /* podium */
+  var pod=elt("div","podium");
+  var orderPod=[]; if(ranked[1])orderPod.push({t:ranked[1],r:2,cls:"p2"}); orderPod.push({t:ranked[0],r:1,cls:"p1"}); if(ranked[2])orderPod.push({t:ranked[2],r:3,cls:"p3"});
+  orderPod.forEach(function(o){
+    var d=elt("div","pod "+o.cls);
+    d.innerHTML=(o.r===1?'<div class="crown">👑</div>':'')+
+      '<div class="block" style="'+(o.cls!=="p1"?"":"")+'"><div class="nm">'+esc(o.t.name)+'</div><div class="sc">'+o.t.score+'</div></div>'+
+      '<div class="rank">'+o.r+(o.r===1?"er":"e")+'</div>';
+    if(o.cls!=="p1"&&o.cls!=="p2"&&o.cls!=="p3"){}
+    pod.appendChild(d);
+  });
+  head.appendChild(pod);
+  /* équipes restantes (4e) */
+  if(ranked.length>3){
+    var rest=elt("p","muted center");
+    rest.textContent=ranked.slice(3).map(function(t,i){return (i+4)+"e — "+t.name+" ("+t.score+" pts)";}).join("   ·   ");
+    head.appendChild(rest);
+  }
+  a.appendChild(head);
+
+  /* bilan pédagogique */
+  var classTheme={};
+  game.teams.forEach(function(t){ for(var k in t.byTheme){ var s=classTheme[k]||{ok:0,tot:0}; s.ok+=t.byTheme[k].ok; s.tot+=t.byTheme[k].tot; classTheme[k]=s; } });
+  var themeArr=[]; for(var k in classTheme){ themeArr.push({nm:k,pc:Math.round(classTheme[k].ok/classTheme[k].tot*100),tot:classTheme[k].tot}); }
+  themeArr.sort(function(x,y){return x.pc-y.pc;});
+
+  var rev=elt("div","card");
+  rev.innerHTML='<div class="eyebrow">Bilan de la classe</div><h2 class="headline" style="font-size:1.6rem">Ce qu\'il faut revoir</h2>';
+  if(themeArr.length===0){ rev.appendChild(elt("p","muted","Aucune donnée enregistrée sur cette partie.")); }
+  else{
+    var grid=elt("div","review");
+    var col1=elt("div","col"); col1.innerHTML='<h3>Réussite par thème</h3>';
+    themeArr.forEach(function(o){
+      var row=elt("div","bar-row");
+      row.innerHTML='<span class="nm">'+esc(o.nm)+'</span><span class="track"><i style="width:'+o.pc+'%;background:'+barColor(o.pc)+'"></i></span><span class="pc" style="color:'+barColor(o.pc)+'">'+o.pc+'%</span>';
+      col1.appendChild(row);
+    });
+    var col2=elt("div","col"); col2.innerHTML='<h3>Niveau DNB par équipe</h3>';
+    ranked.forEach(function(t){
+      var p=t.tot?Math.round(t.ok/t.tot*100):0; var nv=niveau(p);
+      var row=elt("div","bar-row");
+      row.innerHTML='<span class="nm" style="font-weight:600">'+esc(t.name)+'</span>'+
+        '<span class="track"><i style="width:'+p+'%;background:'+nv.c+'"></i></span>'+
+        '<span class="niveau" style="background:'+nv.c+'">'+nv.l+'</span>';
+      col2.appendChild(row);
+    });
+    var prio=themeArr.slice(0,2).map(function(o){return o.nm;});
+    var tip=elt("p","muted"); tip.style.marginTop="12px";
+    tip.innerHTML='🎯 Priorité de révision pour la classe : <b>'+esc(prio.join(" · "))+'</b>.';
+    grid.appendChild(col1); grid.appendChild(col2);
+    rev.appendChild(grid); rev.appendChild(tip);
+  }
+  a.appendChild(rev);
+
+  var bar=elt("div","toolbar");
+  var again=elt("button","btn primary","↻ Rejouer (mêmes équipes)");
+  again.onclick=function(){ var names=game.teams.map(function(t){return t.name;}); var rounds=game.rounds.slice(); var se=game.showExp; newGame(names,rounds,se); nextRound(); };
+  var nw=elt("button","btn ghost","⚙ Nouveau réglage"); nw.style.color="var(--panel)";
+  nw.onclick=renderSetup;
+  bar.appendChild(again); bar.appendChild(elt("span","hud-spacer")); bar.appendChild(nw);
+  a.appendChild(bar);
+  a.appendChild(foot());
+
+  if(ranked[0]&&ranked[0].score>0){ sWin(); confetti(); }
+}
+
+/* ====================================================================
+   MODE : choix d'accueil + RÉVISION SOLO (un élève / un PC)
+   ==================================================================== */
+var SOLO_INTRO={
+  sprint:"Une question, quatre réponses. Prends ton temps, clique : la correction et l'explication s'affichent aussitôt.",
+  cartes:"Un schéma s'affiche (cellule, circuit, atome). Clique sur la bonne partie : le noyau, la pile, la membrane…",
+  frise:"Des étapes, des niveaux ou des époques mélangés. Remets-les dans l'ordre.",
+  dc:"Une affirmation scientifique : à toi de dire si elle est vraie ou fausse.",
+  emc:"Une expérience ou un petit calcul : choisis la bonne réponse, puis lis la méthode."
+};
+function renderHome(){
+  resetIC(); stopTimer(); var a=app(); clear(a);
+  var wrap=elt("div","hero-wrap");
+  var hero=elt("div","card");
+  hero.innerHTML='<div class="eyebrow">Brevet 2026 · Sciences (Physique-Chimie · SVT)</div>'+
+    '<h1 class="headline">Le Grand Défi <span class="pop">Brevet</span></h1>'+
+    '<p class="sub">Physique-chimie et SVT au programme de 3e : matière, énergie, forces, le vivant et la Terre. Choisis ton mode.</p>';
+  wrap.appendChild(hero);
+  var grid=elt("div","setup-grid");
+  var solo=elt("button","card mode-card");
+  solo.innerHTML='<div style="font-size:3rem">👤</div>'+
+    '<h2 class="headline" style="font-size:1.7rem">Réviser seul</h2>'+
+    '<p class="sub">Un élève, un ordinateur, à son rythme. Tu choisis une activité ou la révision complète. Correction immédiate, sans chrono, et bilan personnel par thème.</p>'+
+    '<span class="mode-go">Commencer ma révision  ▶</span>';
+  solo.onclick=renderSoloMenu;
+  var cls=elt("button","card mode-card");
+  cls.innerHTML='<div style="font-size:3rem">🏆</div>'+
+    '<h2 class="headline" style="font-size:1.7rem">Jouer en classe</h2>'+
+    '<p class="sub">Au vidéoprojecteur, en équipes. Six manches, tableau des scores et tapis final. Pour animer une heure de révision.</p>'+
+    '<span class="mode-go">Régler le tournoi  ▶</span>';
+  cls.onclick=renderSetup;
+  grid.appendChild(solo); grid.appendChild(cls);
+  wrap.appendChild(grid);
+  wrap.appendChild(foot());
+  a.appendChild(wrap);
+}
+function renderSoloMenu(){
+  resetIC(); stopTimer(); var a=app(); clear(a);
+  var wrap=elt("div","hero-wrap");
+  var hero=elt("div","card");
+  hero.innerHTML='<div class="eyebrow">Réviser seul · à ton rythme</div>'+
+    '<h1 class="headline">Qu\'est-ce que tu révises ?</h1>'+
+    '<p class="sub">Choisis une activité pour travailler un point précis, ou lance la révision complète pour tout balayer. À la fin, tu vois ton score, ton niveau et les thèmes à retravailler.</p>';
+  var nm=elt("div","team-row"); nm.style.maxWidth="360px"; nm.style.marginTop="14px";
+  nm.innerHTML='<span class="swatch" style="--c:var(--t2)"></span>';
+  var inp=elt("input"); inp.type="text"; inp.placeholder="Ton prénom (facultatif)"; inp.maxLength=22; inp.id="soloName";
+  nm.appendChild(inp); hero.appendChild(nm);
+  wrap.appendChild(hero);
+
+  var full=elt("button","card mode-card");
+  full.innerHTML='<div style="font-size:2.2rem">🎓</div>'+
+    '<h2 class="headline" style="font-size:1.5rem">Révision complète</h2>'+
+    '<p class="sub">Notions, schémas, rangement, vrai/faux et calculs à la suite — toute la séquence.</p>'+
+    '<span class="mode-go">Tout réviser  ▶</span>';
+  full.onclick=function(){ startSolo(["sprint","cartes","frise","dc","emc"]); };
+  wrap.appendChild(full);
+
+  var grid=elt("div","solo-grid");
+  var acts=[
+    {id:"sprint",ic:"⚡",tt:"Sciences express",ds:"Physique-chimie et SVT : notions clés"},
+    {id:"cartes",ic:"🔬",tt:"Le schéma à légender",ds:"Cellule, circuit, atome : clique la bonne partie"},
+    {id:"frise", ic:"📊",tt:"Ranger / ordonner",ds:"Niveaux du vivant, digestion, ères"},
+    {id:"dc",    ic:"✅",tt:"Vrai ou faux",ds:"Juge des affirmations scientifiques"},
+    {id:"emc",   ic:"🧪",tt:"Expériences & calculs",ds:"Loi d'Ohm, vitesse, masse volumique…"}
+  ];
+  acts.forEach(function(o){
+    var b=elt("button","card mode-card solo-tile");
+    b.innerHTML='<div style="font-size:1.8rem">'+o.ic+'</div>'+
+      '<div class="tt" style="font-family:var(--disp);font-weight:700;font-size:1.1rem">'+o.tt+'</div>'+
+      '<p class="sub">'+o.ds+'</p>';
+    b.onclick=function(){ startSolo([o.id]); };
+    grid.appendChild(b);
+  });
+  wrap.appendChild(grid);
+
+  var bar=elt("div","toolbar");
+  var back=elt("button","btn ghost small","← Retour"); back.onclick=renderHome;
+  bar.appendChild(back);
+  wrap.appendChild(bar);
+  wrap.appendChild(foot());
+  a.appendChild(wrap);
+}
+function startSolo(rounds){
+  initAudio();
+  var f=$("#soloName"); var name=(f&&f.value.trim())?f.value.trim():"Toi";
+  newGame([name],rounds,true,true);
+  nextRound();
+}
+function renderSoloBilan(){
+  stopTimer(); resetIC();
+  var t=game.teams[0];
+  var a=app(); clear(a);
+  var p=t.tot?Math.round(t.ok/t.tot*100):0; var nv=niveau(p);
+  var head=elt("div","card center");
+  head.innerHTML='<div class="eyebrow">Bilan de ta révision</div>'+
+    '<h1 class="headline">'+esc(t.name)+', voici ton résultat</h1>'+
+    '<div style="font-family:var(--disp);font-weight:700;font-size:3.4rem;margin:12px 0 0">'+t.score+' <span style="font-size:1.3rem;color:var(--ink-soft)">pts</span></div>'+
+    '<div style="margin:10px 0"><span class="niveau" style="background:'+nv.c+';font-size:1rem">Niveau '+nv.l+'</span></div>'+
+    '<p class="muted">'+t.ok+' bonnes réponses sur '+t.tot+'  ·  '+p+'% de réussite</p>';
+  a.appendChild(head);
+
+  var themeArr=[]; for(var k in t.byTheme){ themeArr.push({nm:k,pc:Math.round(t.byTheme[k].ok/t.byTheme[k].tot*100)}); }
+  themeArr.sort(function(x,y){return x.pc-y.pc;});
+  if(themeArr.length){
+    var rev=elt("div","card");
+    rev.innerHTML='<div class="eyebrow">Par thème</div><h2 class="headline" style="font-size:1.5rem">Ce que tu maîtrises, ce qu\'il faut revoir</h2>';
+    themeArr.forEach(function(o){
+      var row=elt("div","bar-row");
+      row.innerHTML='<span class="nm">'+esc(o.nm)+'</span><span class="track"><i style="width:'+o.pc+'%;background:'+barColor(o.pc)+'"></i></span><span class="pc" style="color:'+barColor(o.pc)+'">'+o.pc+'%</span>';
+      rev.appendChild(row);
+    });
+    var weak=themeArr.filter(function(o){return o.pc<70;}).slice(0,3).map(function(o){return o.nm;});
+    if(weak.length){ var tip=elt("p","muted"); tip.style.marginTop="12px"; tip.innerHTML='🎯 À retravailler en priorité : <b>'+esc(weak.join(" · "))+'</b>.'; rev.appendChild(tip); }
+    a.appendChild(rev);
+  }
+
+  var bar=elt("div","toolbar");
+  var again=elt("button","btn primary","↻ Recommencer");
+  again.onclick=function(){ var name=t.name; var rounds=game.rounds.slice(); newGame([name],rounds,true,true); nextRound(); };
+  var menu=elt("button","btn ghost","← Autres révisions"); menu.style.color="var(--panel)";
+  menu.onclick=renderSoloMenu;
+  bar.appendChild(again); bar.appendChild(elt("span","hud-spacer")); bar.appendChild(menu);
+  a.appendChild(bar);
+  a.appendChild(foot());
+  if(p>=70){ sWin(); confetti(); }
+}
+
+/* ====================================================================
+   DÉMARRAGE
+   ==================================================================== */
+try{var _vb=document.getElementById("appver");if(_vb)_vb.textContent="v3 · "+QUIZ.length+" questions";}catch(e){}
+renderHome();
+</script>
+</body>
+</html>
